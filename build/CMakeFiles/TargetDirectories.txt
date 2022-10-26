@@ -1,3 +1,0 @@
-/root/traffic_analysis/build/CMakeFiles/rebuild_cache.dir
-/root/traffic_analysis/build/CMakeFiles/edit_cache.dir
-/root/traffic_analysis/build/CMakeFiles/traffic_analysis.dir
