@@ -28,4 +28,5 @@ add_executable(traffic_analysis
   src/detect.cpp
   src/logger.hpp
 )
+
 target_link_libraries(traffic_analysis)

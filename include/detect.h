@@ -1,6 +1,8 @@
 #ifndef DETECT_H
 #define DETECT_H
 
+#include <iostream>
+
 #if defined(__GNUC__)
 //  GCC
 #define EXPORT __attribute__((visibility("default")))
@@ -19,6 +21,14 @@ class Detect
 {
 private:
 
+    uint8_t batchSize{};
+    uint8_t numClasses{};
+    uint32_t outputSize{};
+    uint16_t inputH{};
+    uint16_t inputW{};
+    const char* inputBlobName{};
+    const char* outputBlobName{};
+
 
     typedef struct {
         template<class T>
@@ -26,6 +36,9 @@ private:
             delete obj;
         }
     }TRTDelete;
+
+    template<class T>
+    using TRTptr = std::unique_ptr<T, TRTDelete>;
 
 
 public:
