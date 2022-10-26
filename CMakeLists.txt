@@ -11,9 +11,21 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt5Core)
+if(NOT DEFINED TENSORRT_LIBS)
+    message(WARNING "-DTENSORRT_LIBS não foi utilizada..")
+    find_library(NVINFER NAMES nvinfer)
+    find_library(NVINFERPLUGIN NAMES nvinfer_plugin)
+    find_library(NVPARSERS NAMES nvparsers)
+    find_library(NVONNXPARSER NAMES nvonnxparser)
+endif()
+
+if(NVINFER AND NVINFERPLUGIN AND NVPARSERS AND NVONNXPARSER)
+    list(APPEND TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser)
+endif()
 
 add_executable(traffic_analysis
-  main.cpp
+  src/main.cpp
+  src/detect.cpp
+  src/logger.hpp
 )
-target_link_libraries(traffic_analysis Qt5::Core)
+target_link_libraries(traffic_analysis)
