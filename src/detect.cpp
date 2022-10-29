@@ -4,6 +4,16 @@
 Vehicle::Detect::Detect()
 {
     cudaSetDevice(0);
+    this->outputSize = 1000 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+    this->maxInputSize = 1920*1080;
+    this->outputBlobName = "prob";
+    this->inputBlobName = "data";
+    this->confThresh = 0.5;
+    this->nmsThresh = 0.4;
+    this->batchSize = 1;
+    this->inputH = 640;
+    this->inputW = 640;
+    this->numClasses = 6;
 }
 
 void Vehicle::Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray) const{
@@ -37,4 +47,31 @@ void Vehicle::Detect::createContextExecution(){
     this->runtime = static_cast<std::unique_ptr<nvinfer1::IRuntime, TRTDelete>>(std::move(nvinfer1::createInferRuntime(gLogger)));
     this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(vehicle_engine, vehicle_engine_len)));
     this->context = static_cast<std::unique_ptr<nvinfer1::IExecutionContext, TRTDelete>>(std::move(engine->createExecutionContext()));
+}
+
+cv::Mat Vehicle::Detect::doInference(cv::Mat &img){
+    std::vector<void *> buffers(engine->getNbBindings());
+    
+    float imgBuffer[batchSize * 3 * inputH * inputW];
+    float outputBuffer[batchSize * outputSize];
+    
+    preprocessImage(img, imgBuffer);
+    
+    const int inputIndex = engine->getBindingIndex(inputBlobName);
+    const int outputIndex = engine->getBindingIndex(outputBlobName);
+    
+    CUDA_CHECK(cudaMalloc(&buffers[inputIndex], batchSize * 3 * inputH * inputW * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&buffers[outputIndex], batchSize * outputSize * sizeof(float)));
+
+    cudaStream_t stream;
+    CUDA_CHECK(cudaStreamCreate(&stream));
+
+    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], img_buffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, stream));
+    context->enqueueV2(buffers.data(), stream, nullptr);
+    CUDA_CHECK(cudaMemcpyAsync(output_buffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
+    cudaStreamSynchronize(stream);
+
+    cudaStreamDestroy(stream);
+    CUDA_CHECK(cudaFree(buffers[inputIndex]));
+    CUDA_CHECK(cudaFree(buffers[outputIndex]));
 }

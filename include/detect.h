@@ -17,6 +17,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include "utils.h"
 #include <assert.h>
 
 #if defined(__GNUC__)
@@ -51,11 +52,8 @@ namespace Vehicle
         uint32_t maxInputSize{};
         const char* inputBlobName{};
         const char* outputBlobName{};
-
-        uint8_t device{};
         float nmsThresh{};
         float confThresh{};
-
 
         struct TRTDelete{
             template<class T>
@@ -68,7 +66,6 @@ namespace Vehicle
         template<class T>
         using TRTptr = std::unique_ptr<T, TRTDelete>;
 
-        TRTptr<nvinfer1::IHostMemory> serializedModel{nullptr};
         TRTptr<nvinfer1::IRuntime> runtime{nullptr};
         TRTptr<nvinfer1::ICudaEngine> engine{nullptr};
         TRTptr<nvinfer1::IExecutionContext> context{nullptr};
@@ -87,6 +84,8 @@ namespace Vehicle
     public:
         Detect();
         void createContextExecution();
+
+        cv::Mat doInference(cv::Mat& img);
 
         const char* getVersion(){
             return "1.0.0";
