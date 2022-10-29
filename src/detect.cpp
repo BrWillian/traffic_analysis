@@ -1,8 +1,9 @@
 #include "../include/detect.h"
+#include "../generated/weights.h"
 
 Vehicle::Detect::Detect()
 {
-
+    cudaSetDevice(0);
 }
 
 void Vehicle::Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray) const{
@@ -26,8 +27,14 @@ void Vehicle::Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray)
     re.copyTo(out(cv::Rect(x, y, re.cols, re.rows)));
 
     for (int i = 0; i < this->inputH * this->inputW; i++) {
-        imgBufferArray[3 * this->inputH * this->inputW + i] = pr_img.at<cv::Vec3b>(i)[2] / 255.0;
-        imgBufferArray[3 * this->inputH * this->inputW + i + this->inputH * this->inputW] = pr_img.at<cv::Vec3b>(i)[1] / 255.0;
-        imgBufferArray[3 * this->inputH * this->inputW + i + 2 * this->inputH * this->inputW] = pr_img.at<cv::Vec3b>(i)[0] / 255.0;
+        imgBufferArray[3 * this->inputH * this->inputW + i] = out.at<cv::Vec3b>(i)[2] / 255.0;
+        imgBufferArray[3 * this->inputH * this->inputW + i + this->inputH * this->inputW] = out.at<cv::Vec3b>(i)[1] / 255.0;
+        imgBufferArray[3 * this->inputH * this->inputW + i + 2 * this->inputH * this->inputW] = out.at<cv::Vec3b>(i)[0] / 255.0;
     }
+}
+
+void Vehicle::Detect::createContextExecution(){
+    this->runtime = static_cast<std::unique_ptr<nvinfer1::IRuntime, TRTDelete>>(std::move(nvinfer1::createInferRuntime(gLogger)));
+    this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(vehicle_engine, vehicle_engine_len)));
+    this->context = static_cast<std::unique_ptr<nvinfer1::IExecutionContext, TRTDelete>>(std::move(engine->createExecutionContext()));
 }

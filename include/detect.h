@@ -1,12 +1,23 @@
 #ifndef DETECT_H
 #define DETECT_H
 
+#include <chrono>
 #include <iostream>
-#include <memory>
-#include <cmath>
-#include <opencv2/opencv.hpp>
 #include <NvInfer.h>
 #include <NvOnnxParser.h>
+#include <cuda_runtime_api.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/core/cuda.hpp>
+#include <opencv2/cudawarping.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/cudaarithm.hpp>
+#include "logger.hpp"
+#include "yololayer.h"
+#include <fstream>
+#include <string>
+#include <vector>
+#include <assert.h>
 
 #if defined(__GNUC__)
 //  GCC
@@ -21,6 +32,10 @@
     #pragma warning Unknown dynamic link import/export semantics.
 #endif
 
+using namespace nvinfer1;
+REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
+
+static Logger gLogger;
 
 namespace Vehicle
 {
@@ -33,6 +48,7 @@ namespace Vehicle
         uint32_t outputSize{};
         uint16_t inputH{};
         uint16_t inputW{};
+        uint32_t maxInputSize{};
         const char* inputBlobName{};
         const char* outputBlobName{};
 
@@ -41,12 +57,13 @@ namespace Vehicle
         float confThresh{};
 
 
-        typedef struct {
+        struct TRTDelete{
             template<class T>
-            void operator()(T* obj) const{
+            void operator()(T* obj) const
+            {
                 delete obj;
             }
-        }TRTDelete;
+        };
 
         template<class T>
         using TRTptr = std::unique_ptr<T, TRTDelete>;
@@ -61,11 +78,15 @@ namespace Vehicle
         TRTptr<nvinfer1::IBuilderConfig> builderCfg;
 
 
+
         void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
+
+
 
 
     public:
         Detect();
+        void createContextExecution();
 
         const char* getVersion(){
             return "1.0.0";
