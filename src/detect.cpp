@@ -68,10 +68,13 @@ cv::Mat Vehicle::Detect::doInference(cv::Mat &img){
 
     CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], img_buffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, stream));
     context->enqueueV2(buffers.data(), stream, nullptr);
-    CUDA_CHECK(cudaMemcpyAsync(output_buffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
+    CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
     cudaStreamSynchronize(stream);
 
     cudaStreamDestroy(stream);
     CUDA_CHECK(cudaFree(buffers[inputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
+}
+float Vehicle::Detect::iou(std::array<float, _Tp2> lbox, std::array<float, _Tp2> rbox) const{
+
 }

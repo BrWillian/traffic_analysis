@@ -74,25 +74,21 @@ namespace Vehicle
         TRTptr<nvonnxparser::IParser> parser{nullptr};
         TRTptr<nvinfer1::IBuilderConfig> builderCfg;
 
-
-
+    protected:
         void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
-
-
-
+        static float iou(std::array<float, 4> lbox, std::array<float, 4> rbox) const;
 
     public:
         Detect();
         void createContextExecution();
 
-        cv::Mat doInference(cv::Mat& img);
+        std::string doInference(cv::Mat& img);
+        std::vector<Yolo::Detection> doInference(cv::Mat& img);
 
-        const char* getVersion(){
-            return "1.0.0";
-        }
-        const char* getWVersion(){
-            return "1.0.0";
-        }
+
+        const char* getVersion();
+
+        const char* getWVersion();
 
     };
 }
