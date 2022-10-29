@@ -5,33 +5,17 @@
 #include <string>
 #include <NvInfer.h>
 
-#if NV_TENSORRT_MAJOR >= 8
-#define TRT_NOEXCEPT noexcept
-#define TRT_CONST_ENQUEUE const
-#else
-#define TRT_NOEXCEPT
-#define TRT_CONST_ENQUEUE
-#endif
-
 namespace Yolo
 {
-    static constexpr int CHECK_COUNT = 3;
-    static constexpr float IGNORE_THRESH = 0.1f;
     struct YoloKernel
     {
         int width;
         int height;
-        float anchors[CHECK_COUNT * 2];
+        float anchors[6];
     };
-    static constexpr int MAX_OUTPUT_BBOX_COUNT = 1000;
-    static constexpr int CLASS_NUM = 6;
-    static constexpr int INPUT_H = 640;
-    static constexpr int INPUT_W = 640;
-
-    static constexpr int LOCATIONS = 4;
     struct alignas(float) Detection {
 
-        float bbox[LOCATIONS];
+        float bbox[4];
         float conf;
         float class_id;
     };
@@ -46,47 +30,47 @@ namespace nvinfer1
         YoloLayerPlugin(const void* data, size_t length);
         ~YoloLayerPlugin();
 
-        int getNbOutputs() const TRT_NOEXCEPT override;
+        int getNbOutputs() const noexcept override;
 
-        Dims getOutputDimensions(int index, const Dims* inputs, int nbInputDims) TRT_NOEXCEPT override;
+        Dims getOutputDimensions(int index, const Dims* inputs, int nbInputDims) noexcept override;
 
-        int initialize() TRT_NOEXCEPT override;
+        int initialize() noexcept override;
 
-        virtual void terminate() TRT_NOEXCEPT override {}
+        virtual void terminate() noexcept override {}
 
-        virtual size_t getWorkspaceSize(int maxBatchSize) const TRT_NOEXCEPT override { return 0; }
+        virtual size_t getWorkspaceSize(int maxBatchSize) const noexcept override { return 0; }
 
-        virtual int enqueue(int batchSize, const void* const* inputs, void*TRT_CONST_ENQUEUE* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+        virtual int enqueue(int batchSize, const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) noexcept override;
 
-        virtual size_t getSerializationSize() const TRT_NOEXCEPT override;
+        virtual size_t getSerializationSize() const noexcept override;
 
-        virtual void serialize(void* buffer) const TRT_NOEXCEPT override;
+        virtual void serialize(void* buffer) const noexcept override;
 
-        bool supportsFormatCombination(int pos, const PluginTensorDesc* inOut, int nbInputs, int nbOutputs) const TRT_NOEXCEPT override;
+        bool supportsFormatCombination(int pos, const PluginTensorDesc* inOut, int nbInputs, int nbOutputs) const noexcept override;
 
-        const char* getPluginType() const TRT_NOEXCEPT override;
+        const char* getPluginType() const noexcept override;
 
-        const char* getPluginVersion() const TRT_NOEXCEPT override;
+        const char* getPluginVersion() const noexcept override;
 
-        void destroy() TRT_NOEXCEPT override;
+        void destroy() noexcept override;
 
-        IPluginV2IOExt* clone() const TRT_NOEXCEPT override;
+        IPluginV2IOExt* clone() const noexcept override;
 
-        void setPluginNamespace(const char* pluginNamespace) TRT_NOEXCEPT override;
+        void setPluginNamespace(const char* pluginNamespace) noexcept override;
 
-        const char* getPluginNamespace() const TRT_NOEXCEPT override;
+        const char* getPluginNamespace() const noexcept override;
 
-        DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const TRT_NOEXCEPT override;
+        DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const noexcept override;
 
-        bool isOutputBroadcastAcrossBatch(int outputIndex, const bool* inputIsBroadcasted, int nbInputs) const TRT_NOEXCEPT override;
+        bool isOutputBroadcastAcrossBatch(int outputIndex, const bool* inputIsBroadcasted, int nbInputs) const noexcept override;
 
-        bool canBroadcastInputAcrossBatch(int inputIndex) const TRT_NOEXCEPT override;
+        bool canBroadcastInputAcrossBatch(int inputIndex) const noexcept override;
 
-        void attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext, IGpuAllocator* gpuAllocator) TRT_NOEXCEPT override;
+        void attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext, IGpuAllocator* gpuAllocator) noexcept override;
 
-        void configurePlugin(const PluginTensorDesc* in, int nbInput, const PluginTensorDesc* out, int nbOutput) TRT_NOEXCEPT override;
+        void configurePlugin(PluginTensorDesc const* in, int32_t nbInput, PluginTensorDesc const* out, int32_t nbOutput) noexcept override;
 
-        void detachFromContext() TRT_NOEXCEPT override;
+        void detachFromContext() noexcept override;
 
     private:
 
@@ -109,19 +93,19 @@ namespace nvinfer1
 
         ~YoloPluginCreator() override = default;
 
-        const char* getPluginName() const TRT_NOEXCEPT override;
+        const char* getPluginName() const noexcept override;
 
-        const char* getPluginVersion() const TRT_NOEXCEPT override;
+        const char* getPluginVersion() const noexcept override;
 
-        const PluginFieldCollection* getFieldNames() TRT_NOEXCEPT override;
+        const PluginFieldCollection* getFieldNames() noexcept override;
 
-        IPluginV2IOExt* createPlugin(const char* name, const PluginFieldCollection* fc) TRT_NOEXCEPT override;
+        IPluginV2IOExt* createPlugin(const char* name, const PluginFieldCollection* fc) noexcept override;
 
-        IPluginV2IOExt* deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRT_NOEXCEPT override;
+        IPluginV2IOExt* deserializePlugin(const char* name, const void* serialData, size_t serialLength) noexcept override;
 
-        void setPluginNamespace(const char* libNamespace) TRT_NOEXCEPT override;
+        void setPluginNamespace(const char* libNamespace) noexcept override;
 
-        const char* getPluginNamespace() const TRT_NOEXCEPT override;
+        const char* getPluginNamespace() const noexcept override;
     private:
         std::string mNamespace;
         static PluginFieldCollection mFC;
