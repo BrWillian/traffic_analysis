@@ -76,8 +76,9 @@ namespace Vehicle
 
     protected:
         void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
-        static float iou(std::array<float, 4> lbox, std::array<float, 4> rbox);
-        static void nms(std::vector<Yolo::Detection>& res, float *output) const;
+        static float iou(float lbox[4], float rbox[4]);
+        void nms(std::vector<Yolo::Detection>& res, float *output) const;
+        static bool cmp(const Yolo::Detection& a, const Yolo::Detection& b);
 
     public:
         Detect();

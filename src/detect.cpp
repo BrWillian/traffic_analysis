@@ -78,7 +78,7 @@ std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
 
     return std::vector<Yolo::Detection> {};
 }
-float Vehicle::Detect::iou(std::array<float, 4> lbox, std::array<float, 4> rbox){
+float Vehicle::Detect::iou(float lbox[4], float rbox[4]){
     std::array<float, 4> interBox = {
         (std::max)(lbox[0] - lbox[2] / 2.f , rbox[0] - rbox[2] / 2.f),
         (std::min)(lbox[0] + lbox[2] / 2.f , rbox[0] + rbox[2] / 2.f),
@@ -95,8 +95,8 @@ float Vehicle::Detect::iou(std::array<float, 4> lbox, std::array<float, 4> rbox)
 void Vehicle::Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
     int det_size = sizeof(Yolo::Detection) / sizeof(float);
     std::map<float, std::vector<Yolo::Detection>> m;
-    for (int i = 0; i < output[0] && i < Yolo::MAX_OUTPUT_BBOX_COUNT; i++) {
-        if (output[1 + det_size * i + 4] <= this->confThresh) continue;
+    for (int i = 0; i < output[0] && i < 1000; i++) {
+        if (output[1 + det_size * i + 4] <= confThresh) continue;
         Yolo::Detection det;
         memcpy(&det, &output[1 + det_size * i], det_size * sizeof(float));
         if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<Yolo::Detection>());
@@ -117,6 +117,9 @@ void Vehicle::Detect::nms(std::vector<Yolo::Detection>& res, float *output) cons
             }
         }
     }
+}
+bool Vehicle::Detect::cmp(const Yolo::Detection& a, const Yolo::Detection& b) {
+    return a.conf > b.conf;
 }
 const char* Vehicle::Detect::getVersion(){
     return VERSION "-" GIT_BRANCH "-" GIT_COMMIT_HASH;
