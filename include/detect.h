@@ -76,13 +76,14 @@ namespace Vehicle
 
     protected:
         void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
-        static float iou(std::array<float, 4> lbox, std::array<float, 4> rbox) const;
+        static float iou(std::array<float, 4> lbox, std::array<float, 4> rbox);
+        static void nms(std::vector<Yolo::Detection>& res, float *output) const;
 
     public:
         Detect();
         void createContextExecution();
 
-        std::string doInference(cv::Mat& img);
+        //std::string doInference(cv::Mat& img);
         std::vector<Yolo::Detection> doInference(cv::Mat& img);
 
 

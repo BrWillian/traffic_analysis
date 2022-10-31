@@ -1,5 +1,6 @@
 #include "../include/detect.h"
 #include "../generated/weights.h"
+#include "../generated/version.h"
 
 Vehicle::Detect::Detect()
 {
@@ -49,7 +50,7 @@ void Vehicle::Detect::createContextExecution(){
     this->context = static_cast<std::unique_ptr<nvinfer1::IExecutionContext, TRTDelete>>(std::move(engine->createExecutionContext()));
 }
 
-cv::Mat Vehicle::Detect::doInference(cv::Mat &img){
+std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
     std::vector<void *> buffers(engine->getNbBindings());
     
     float imgBuffer[batchSize * 3 * inputH * inputW];
@@ -66,7 +67,7 @@ cv::Mat Vehicle::Detect::doInference(cv::Mat &img){
     cudaStream_t stream;
     CUDA_CHECK(cudaStreamCreate(&stream));
 
-    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], img_buffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, stream));
     context->enqueueV2(buffers.data(), stream, nullptr);
     CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
     cudaStreamSynchronize(stream);
@@ -74,7 +75,52 @@ cv::Mat Vehicle::Detect::doInference(cv::Mat &img){
     cudaStreamDestroy(stream);
     CUDA_CHECK(cudaFree(buffers[inputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
-}
-float Vehicle::Detect::iou(std::array<float, _Tp2> lbox, std::array<float, _Tp2> rbox) const{
 
+    return std::vector<Yolo::Detection> {};
+}
+float Vehicle::Detect::iou(std::array<float, 4> lbox, std::array<float, 4> rbox){
+    std::array<float, 4> interBox = {
+        (std::max)(lbox[0] - lbox[2] / 2.f , rbox[0] - rbox[2] / 2.f),
+        (std::min)(lbox[0] + lbox[2] / 2.f , rbox[0] + rbox[2] / 2.f),
+        (std::max)(lbox[1] - lbox[3] / 2.f , rbox[1] - rbox[3] / 2.f),
+        (std::min)(lbox[1] + lbox[3] / 2.f , rbox[1] + rbox[3] / 2.f),
+    };
+
+    if (interBox[2] > interBox[3] || interBox[0] > interBox[1])
+            return 0.0f;
+
+    float interBoxS = (interBox[1] - interBox[0])*(interBox[3] - interBox[2]);
+    return interBoxS / (lbox[2] * lbox[3] + rbox[2] * rbox[3] - interBoxS);
+}
+void Vehicle::Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
+    int det_size = sizeof(Yolo::Detection) / sizeof(float);
+    std::map<float, std::vector<Yolo::Detection>> m;
+    for (int i = 0; i < output[0] && i < Yolo::MAX_OUTPUT_BBOX_COUNT; i++) {
+        if (output[1 + det_size * i + 4] <= this->confThresh) continue;
+        Yolo::Detection det;
+        memcpy(&det, &output[1 + det_size * i], det_size * sizeof(float));
+        if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<Yolo::Detection>());
+        m[det.class_id].push_back(det);
+    }
+    for (auto it = m.begin(); it != m.end(); it++) {
+        //std::cout << it->second[0].class_id << " --- " << std::endl;
+        auto& dets = it->second;
+        std::sort(dets.begin(), dets.end(), cmp);
+        for (size_t m = 0; m < dets.size(); ++m) {
+            auto& item = dets[m];
+            res.push_back(item);
+            for (size_t n = m + 1; n < dets.size(); ++n) {
+                if (iou(item.bbox, dets[n].bbox) > nmsThresh) {
+                    dets.erase(dets.begin() + n);
+                    --n;
+                }
+            }
+        }
+    }
+}
+const char* Vehicle::Detect::getVersion(){
+    return VERSION "-" GIT_BRANCH "-" GIT_COMMIT_HASH;
+}
+const char* Vehicle::Detect::getWVersion(){
+    return W_VERSION "-" W_HASH;
 }
