@@ -8,21 +8,21 @@ int main(int argc, char *argv[])
 
     vh->createContextExecution();
 
-    std::string images_inf[] = {"/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_10.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_100.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_1003.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_1004.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_1005.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_1006.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_1015.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_1019.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_1027.jpg","/home/willian/projects/vizentec/traffic_analysis_fixed/imgs/img_rv_1030.jpg"};
-
+    std::string images_inf[] = {"/root/imagem/img_100.jpg","/root/imagem/img_101.jpg","/root/imagem/img_102.jpg","/root/imagem/img_103.jpg","/root/imagem/img_104.jpg","/root/imagem/img_105.jpg","/root/imagem/img_106.jpg","/root/imagem/img_107.jpg","/root/imagem/img_108.jpg","/root/imagem/img_109.jpg"};
     int num_images = sizeof(images_inf)/sizeof(images_inf[0]);
 
     for (int b = 0; b < num_images; b++) {
         cv::Mat img = cv::imread(images_inf[b]);
         auto start = std::chrono::high_resolution_clock::now();
 
-        auto res = vh->doInference(img);
+        auto res = vh->doInference(img);        
+
+        auto end = std::chrono::high_resolution_clock::now();
+
 
         for(auto &it: res){
             std::cout<<it.class_id<<std::endl;
         }
-
-        auto end = std::chrono::high_resolution_clock::now();
 
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
