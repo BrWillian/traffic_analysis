@@ -19,28 +19,28 @@ Vehicle::Detect::Detect()
 
 void Vehicle::Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray) const{
     int w, h, x, y;
-    float r_w = this->inputW / (img.cols*1.0);
-    float r_h = this->inputH / (img.rows*1.0);
+    float r_w = inputW / (img.cols*1.0);
+    float r_h = inputH / (img.rows*1.0);
     if (r_h > r_w) {
-        w = this->inputW;
+        w = inputW;
         h = r_w * img.rows;
         x = 0;
-        y = (this->inputH - h) / 2;
+        y = (inputH - h) / 2;
     } else {
         w = r_h* img.cols;
-        h = this->inputH;
-        x = (this->inputW - w) / 2;
+        h = inputH;
+        x = (inputW - w) / 2;
         y = 0;
     }
     cv::Mat re(h, w, CV_8UC3);
     cv::resize(img, re, re.size(), 0, 0, cv::INTER_NEAREST);
-    cv::Mat out(this->inputH, this->inputW, CV_8UC3, cv::Scalar(128, 128, 128));
+    cv::Mat out(inputH, inputW, CV_8UC3, cv::Scalar(128, 128, 128));
     re.copyTo(out(cv::Rect(x, y, re.cols, re.rows)));
 
-    for (int i = 0; i < this->inputH * this->inputW; i++) {
-        imgBufferArray[3 * this->inputH * this->inputW + i] = out.at<cv::Vec3b>(i)[2] / 255.0;
-        imgBufferArray[3 * this->inputH * this->inputW + i + this->inputH * this->inputW] = out.at<cv::Vec3b>(i)[1] / 255.0;
-        imgBufferArray[3 * this->inputH * this->inputW + i + 2 * this->inputH * this->inputW] = out.at<cv::Vec3b>(i)[0] / 255.0;
+    for (int i = 0; i < inputH * inputW; i++) {
+        imgBufferArray[i] = out.at<cv::Vec3b>(i)[2] / 255.0;
+        imgBufferArray[i + inputH * inputW] = out.at<cv::Vec3b>(i)[1] / 255.0;
+        imgBufferArray[i + 2 * inputH * inputW] = out.at<cv::Vec3b>(i)[0] / 255.0;
     }
 }
 
@@ -51,6 +51,7 @@ void Vehicle::Detect::createContextExecution(){
 }
 
 std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
+    std::vector<Yolo::Detection> result{};
     std::vector<void *> buffers(engine->getNbBindings());
     
     float imgBuffer[batchSize * 3 * inputH * inputW];
@@ -68,15 +69,17 @@ std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
     CUDA_CHECK(cudaStreamCreate(&stream));
 
     CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, stream));
-    context->enqueueV2(buffers.data(), stream, nullptr);
+    context->enqueue(batchSize, buffers.data(), stream, nullptr);
     CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
     cudaStreamSynchronize(stream);
+
+    nms(result, outputBuffer);
 
     cudaStreamDestroy(stream);
     CUDA_CHECK(cudaFree(buffers[inputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
 
-    return std::vector<Yolo::Detection> {};
+    return result;
 }
 float Vehicle::Detect::iou(float lbox[4], float rbox[4]){
     std::array<float, 4> interBox = {
