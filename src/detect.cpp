@@ -5,7 +5,7 @@
 Vehicle::Detect::Detect()
 {
     cudaSetDevice(0);
-    this->outputSize = 1000 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+    this->outputSize = 50 * sizeof(Yolo::Detection) / sizeof(float) + 1;
     this->maxInputSize = 1920*1080;
     this->outputBlobName = "prob";
     this->inputBlobName = "data";
@@ -33,14 +33,20 @@ void Vehicle::Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray)
         y = 0;
     }
     cv::Mat re(h, w, CV_8UC3);
-    cv::resize(img, re, re.size(), 0, 0, cv::INTER_NEAREST);
+    cv::resize(img, re, re.size(), 0, 0, cv::INTER_LINEAR);
     cv::Mat out(inputH, inputW, CV_8UC3, cv::Scalar(128, 128, 128));
     re.copyTo(out(cv::Rect(x, y, re.cols, re.rows)));
 
-    for (int i = 0; i < inputH * inputW; i++) {
-        imgBufferArray[i] = out.at<cv::Vec3b>(i)[2] / 255.0;
-        imgBufferArray[i + inputH * inputW] = out.at<cv::Vec3b>(i)[1] / 255.0;
-        imgBufferArray[i + 2 * inputH * inputW] = out.at<cv::Vec3b>(i)[0] / 255.0;
+    int i = 0;
+    for (int row = 0; row < inputH; ++row) {
+        uchar* uc_pixel = out.data + row * out.step;
+        for (int col = 0; col < inputW; ++col) {
+            imgBufferArray[i] = (float)uc_pixel[2] / 255.0;
+            imgBufferArray[i + inputH * inputW] = (float)uc_pixel[1] / 255.0;
+            imgBufferArray[i + 2 * inputH * inputW] = (float)uc_pixel[0] / 255.0;
+            uc_pixel += 3;
+            ++i;
+        }
     }
 }
 
@@ -48,36 +54,34 @@ void Vehicle::Detect::createContextExecution(){
     this->runtime = static_cast<std::unique_ptr<nvinfer1::IRuntime, TRTDelete>>(std::move(nvinfer1::createInferRuntime(gLogger)));
     this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(vehicle_engine, vehicle_engine_len)));
     this->context = static_cast<std::unique_ptr<nvinfer1::IExecutionContext, TRTDelete>>(std::move(engine->createExecutionContext()));
+
+    this->imgBuffer = new float[batchSize * 3 * inputH * inputW];
+    this->outputBuffer = new float[batchSize * outputSize];
+    
+    this->inputIndex = engine->getBindingIndex(inputBlobName);
+    this->outputIndex = engine->getBindingIndex(outputBlobName);
+    
+    this->buffers = std::vector<void *>(engine->getNbBindings());
+    
+    CUDA_CHECK(cudaMalloc(&buffers[inputIndex], batchSize * 3 * inputH * inputW * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&buffers[outputIndex], batchSize * outputSize * sizeof(float)));       
 }
 
 std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
     std::vector<Yolo::Detection> result{};
-    std::vector<void *> buffers(engine->getNbBindings());
-    
-    float imgBuffer[batchSize * 3 * inputH * inputW];
-    float outputBuffer[batchSize * outputSize];
-    
+ 
     preprocessImage(img, imgBuffer);
-    
-    const int inputIndex = engine->getBindingIndex(inputBlobName);
-    const int outputIndex = engine->getBindingIndex(outputBlobName);
-    
-    CUDA_CHECK(cudaMalloc(&buffers[inputIndex], batchSize * 3 * inputH * inputW * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&buffers[outputIndex], batchSize * outputSize * sizeof(float)));
 
-    cudaStream_t stream;
-    CUDA_CHECK(cudaStreamCreate(&stream));
-
-    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, stream));
-    context->enqueue(batchSize, buffers.data(), stream, nullptr);
-    CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
-    cudaStreamSynchronize(stream);
+    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, nullptr));
+    context->enqueue(batchSize, buffers.data(), nullptr, nullptr);
+    CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, nullptr));
+    //cudaStreamSynchronize(stream);
 
     nms(result, outputBuffer);
 
-    cudaStreamDestroy(stream);
-    CUDA_CHECK(cudaFree(buffers[inputIndex]));
-    CUDA_CHECK(cudaFree(buffers[outputIndex]));
+//    cudaStreamDestroy(stream);
+//    CUDA_CHECK(cudaFree(buffers[inputIndex]));
+//    CUDA_CHECK(cudaFree(buffers[outputIndex]));
 
     return result;
 }
@@ -98,7 +102,7 @@ float Vehicle::Detect::iou(float lbox[4], float rbox[4]){
 void Vehicle::Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
     int det_size = sizeof(Yolo::Detection) / sizeof(float);
     std::map<float, std::vector<Yolo::Detection>> m;
-    for (int i = 0; i < output[0] && i < 1000; i++) {
+    for (int i = 0; i < output[0] && i < 50; i++) {
         if (output[1 + det_size * i + 4] <= confThresh) continue;
         Yolo::Detection det;
         memcpy(&det, &output[1 + det_size * i], det_size * sizeof(float));

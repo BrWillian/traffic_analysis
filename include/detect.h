@@ -55,6 +55,12 @@ namespace Vehicle
         float nmsThresh{};
         float confThresh{};
 
+        float *imgBuffer{};
+        float *outputBuffer{};
+        std::vector<void *> buffers{};
+        uint8_t inputIndex{};
+        uint8_t outputIndex{};
+
         struct TRTDelete{
             template<class T>
             void operator()(T* obj) const
