@@ -16,26 +16,28 @@ Vehicle::Detect::Detect()
     this->inputW = 640;
     this->numClasses = 6;
 }
-
+Vehicle::Detect::~Detect(){
+    CUDA_CHECK(cudaFree(buffers[inputIndex]));
+    CUDA_CHECK(cudaFree(buffers[outputIndex]));
+}
 void Vehicle::Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray) const{
-    int w, h, x, y;
+
     float r_w = inputW / (img.cols*1.0);
     float r_h = inputH / (img.rows*1.0);
+    cv::Rect roi;
     if (r_h > r_w) {
-        w = inputW;
-        h = r_w * img.rows;
-        x = 0;
-        y = (inputH - h) / 2;
+        roi.width = inputW;
+        roi.height = r_w * img.rows;
+        roi.x = 0;
+        roi.y = (inputH - roi.height) / 2;
     } else {
-        w = r_h* img.cols;
-        h = inputH;
-        x = (inputW - w) / 2;
-        y = 0;
+        roi.width = r_h* img.cols;
+        roi.height = inputH;
+        roi.x = (inputW - roi.width) / 2;
+        roi.y = 0;
     }
-    cv::Mat re(h, w, CV_8UC3);
-    cv::resize(img, re, re.size(), 0, 0, cv::INTER_LINEAR);
     cv::Mat out(inputH, inputW, CV_8UC3, cv::Scalar(128, 128, 128));
-    re.copyTo(out(cv::Rect(x, y, re.cols, re.rows)));
+    cv::resize(img, out(roi), roi.size(), cv::INTER_NEAREST);
 
     int i = 0;
     for (int row = 0; row < inputH; ++row) {
@@ -75,18 +77,13 @@ std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
     CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, nullptr));
     context->enqueue(batchSize, buffers.data(), nullptr, nullptr);
     CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, nullptr));
-    //cudaStreamSynchronize(stream);
 
     nms(result, outputBuffer);
-
-//    cudaStreamDestroy(stream);
-//    CUDA_CHECK(cudaFree(buffers[inputIndex]));
-//    CUDA_CHECK(cudaFree(buffers[outputIndex]));
 
     return result;
 }
 float Vehicle::Detect::iou(float lbox[4], float rbox[4]){
-    std::array<float, 4> interBox = {
+    float interBox[] = {
         (std::max)(lbox[0] - lbox[2] / 2.f , rbox[0] - rbox[2] / 2.f),
         (std::min)(lbox[0] + lbox[2] / 2.f , rbox[0] + rbox[2] / 2.f),
         (std::max)(lbox[1] - lbox[3] / 2.f , rbox[1] - rbox[3] / 2.f),
@@ -110,7 +107,6 @@ void Vehicle::Detect::nms(std::vector<Yolo::Detection>& res, float *output) cons
         m[det.class_id].push_back(det);
     }
     for (auto it = m.begin(); it != m.end(); it++) {
-        //std::cout << it->second[0].class_id << " --- " << std::endl;
         auto& dets = it->second;
         std::sort(dets.begin(), dets.end(), cmp);
         for (size_t m = 0; m < dets.size(); ++m) {

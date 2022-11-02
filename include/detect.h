@@ -4,7 +4,6 @@
 #include <chrono>
 #include <iostream>
 #include <NvInfer.h>
-#include <NvOnnxParser.h>
 #include <cuda_runtime_api.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -75,10 +74,6 @@ namespace Vehicle
         TRTptr<nvinfer1::IRuntime> runtime{nullptr};
         TRTptr<nvinfer1::ICudaEngine> engine{nullptr};
         TRTptr<nvinfer1::IExecutionContext> context{nullptr};
-        TRTptr<nvinfer1::IBuilder> builder{nullptr};
-        TRTptr<nvinfer1::INetworkDefinition> network{nullptr};
-        TRTptr<nvonnxparser::IParser> parser{nullptr};
-        TRTptr<nvinfer1::IBuilderConfig> builderCfg;
 
     protected:
         void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
@@ -88,11 +83,11 @@ namespace Vehicle
 
     public:
         Detect();
+        ~Detect();
         void createContextExecution();
 
         //std::string doInference(cv::Mat& img);
         std::vector<Yolo::Detection> doInference(cv::Mat& img);
-
 
         const char* getVersion();
 
