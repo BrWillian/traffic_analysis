@@ -20,9 +20,9 @@ int main(int argc, char *argv[])
         auto end = std::chrono::high_resolution_clock::now();
 
 
-        for(auto &it: res){
-            std::cout<<it.class_id<<std::endl;
-        }
+//        for(auto &it: res){
+//            std::cout<<it.class_id<<std::endl;
+//        }
 
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -33,5 +33,6 @@ int main(int argc, char *argv[])
 
     std::cout<<vh->getVersion()<<std::endl;
     std::cout<<vh->getWVersion()<<std::endl;
+    vh->~Detect();
 
 }
