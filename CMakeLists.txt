@@ -104,6 +104,9 @@ set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS})
 cuda_add_library(yololayer SHARED src/yololayer.cu)
 set_target_properties(yololayer PROPERTIES PREFIX "")
 
+add_library(tracker SHARED src/tracker.cpp)
+set_target_properties(tracker PROPERTIES PREFIX "")
+
 add_executable(traffic_analysis
   src/main.cpp
   src/detect.cpp
