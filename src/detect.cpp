@@ -5,7 +5,7 @@
 Vehicle::Detect::Detect()
 {
     cudaSetDevice(0);
-    this->outputSize = 50 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+    this->outputSize = 20 * sizeof(Yolo::Detection) / sizeof(float) + 1;
     this->maxInputSize = 1920*1080;
     this->outputBlobName = "prob";
     this->inputBlobName = "data";
@@ -17,6 +17,9 @@ Vehicle::Detect::Detect()
     this->numClasses = 6;
 }
 Vehicle::Detect::~Detect(){
+    this->runtime.reset(nullptr);
+    this->context.reset(nullptr);
+    this->engine.reset(nullptr);
     CUDA_CHECK(cudaFree(buffers[inputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
 }
@@ -99,7 +102,7 @@ float Vehicle::Detect::iou(float lbox[4], float rbox[4]){
 void Vehicle::Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
     int det_size = sizeof(Yolo::Detection) / sizeof(float);
     std::map<float, std::vector<Yolo::Detection>> m;
-    for (int i = 0; i < output[0] && i < 50; i++) {
+    for (int i = 0; i < output[0] && i < 20; i++) {
         if (output[1 + det_size * i + 4] <= confThresh) continue;
         Yolo::Detection det;
         memcpy(&det, &output[1 + det_size * i], det_size * sizeof(float));
