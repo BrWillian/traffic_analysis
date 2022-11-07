@@ -86,8 +86,9 @@ namespace Vehicle
         ~Detect();
         void createContextExecution();
 
-        //std::string doInference(cv::Mat& img);
         std::vector<Yolo::Detection> doInference(cv::Mat& img);
+
+        cv::Rect getRect(cv::Mat& img, float bbox[4]);
 
         const char* getVersion();
 
