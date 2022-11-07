@@ -4,13 +4,13 @@ project(traffic_analysis LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-add_definitions(-std=c++11)
+add_definitions(-std=c++14)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 execute_process(
         COMMAND git rev-parse --abbrev-ref HEAD
@@ -107,11 +107,14 @@ set_target_properties(yololayer PROPERTIES PREFIX "")
 add_library(tracker SHARED src/tracker.cpp)
 set_target_properties(tracker PROPERTIES PREFIX "")
 
+add_library(polygon SHARED src/polygon.cpp)
+set_target_properties(polygon PROPERTIES PREFIX "")
+
 add_executable(traffic_analysis
   src/main.cpp
   src/detect.cpp
 )
 
-target_link_libraries(traffic_analysis ${LIB_DEPENDENCIES} yololayer)
+target_link_libraries(traffic_analysis ${LIB_DEPENDENCIES} yololayer tracker polygon)
 
 add_definitions(-O2 -pthread)
