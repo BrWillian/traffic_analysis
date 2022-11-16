@@ -80,19 +80,14 @@ namespace Vehicle
         static float iou(float lbox[4], float rbox[4]);
         void nms(std::vector<Yolo::Detection>& res, float *output) const;
         static bool cmp(const Yolo::Detection& a, const Yolo::Detection& b);
+        cv::Rect getRect(cv::Mat& img, float bbox[4]);
+        void createContextExecution();
 
     public:
         Detect();
         ~Detect();
-        void createContextExecution();
 
         std::vector<Yolo::Detection> doInference(cv::Mat& img);
-
-        cv::Rect getRect(cv::Mat& img, float bbox[4]);
-
-        const char* getVersion();
-
-        const char* getWVersion();
 
     };
 }
