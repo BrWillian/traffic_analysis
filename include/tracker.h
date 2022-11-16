@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iterator>
+#include "../include/yololayer.h"
 
 namespace Vehicle
 {
@@ -18,7 +19,7 @@ namespace Vehicle
 
         void register_Object(int cX, int cY);
 
-        std::vector<std::pair<int, std::pair<int, int>>> update(std::vector<std::vector<int>> boxes);
+        std::vector<std::pair<int, std::pair<int, int>>> update(std::vector<Yolo::Detection> &dets);
 
         // <ID, centroids>
         std::vector<std::pair<int, std::pair<int, int>>> objects;

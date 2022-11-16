@@ -35,8 +35,8 @@ std::vector<float>::size_type findMin(const std::vector<float> &v, std::vector<f
     }
     return (min);
 }
-std::vector<std::pair<int, std::pair<int, int>>> Vehicle::Tracker::update(std::vector<std::vector<int>> boxes) {
-    if (boxes.empty()) {
+std::vector<std::pair<int, std::pair<int, int>>> Vehicle::Tracker::update(std::vector<Yolo::Detection> &dets) {
+    if (dets.empty()) {
         auto it = this->disappeared.begin();
         while (it != this->disappeared.end()) {
             it->second++;
@@ -55,9 +55,9 @@ std::vector<std::pair<int, std::pair<int, int>>> Vehicle::Tracker::update(std::v
 
     // initialize an array of input centroids for the current frame
     vector<pair<int, int>> inputCentroids;
-    for (auto b : boxes) {
-        int cX = int(b[0] + b[2] / 2.0);
-        int cY = int(b[1] + b[3] / 2.0);
+    for (auto det : dets) {
+        int cX = int(det.bbox[0] + det.bbox[2] / 2.0);
+        int cY = int(det.bbox[1] + det.bbox[3] / 2.0);
         inputCentroids.push_back(make_pair(cX, cY));
     }
 
@@ -128,17 +128,24 @@ std::vector<std::pair<int, std::pair<int, int>>> Vehicle::Tracker::update(std::v
         //loop over the combination of the (rows, columns) index tuples
         for (int i = 0; i < rows.size(); i++) {
             //if we have already examined either the row or column value before, ignore it
-            if (usedRows.count(rows[i]) || usedCols.count(cols[i])) { continue; }
+            //if (usedRows.count(rows[i]) || usedCols.count(cols[i])) { continue; }
             //otherwise, grab the object ID for the current row, set its new centroid,
             // and reset the disappeared counter
             int objectID = objectIDs[rows[i]];
             for (int t = 0; t < this->objects.size(); t++) {
+                double dist = calcDistance(this->objects[t].second.first, this->objects[t].second.second, inputCentroids[cols[i]].first, inputCentroids[cols[i]].second);
+                if(dist > 150) continue;
+
                 if (this->objects[t].first == objectID) {
                     this->objects[t].second.first = inputCentroids[cols[i]].first;
                     this->objects[t].second.second = inputCentroids[cols[i]].second;
+                }else{
+                    deleteObject(objectID);
                 }
+
             }
             this->disappeared[objectID] = 0;
+
 
             usedRows.insert(rows[i]);
             usedCols.insert(cols[i]);
