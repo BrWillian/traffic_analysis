@@ -101,20 +101,28 @@ file(MAKE_DIRECTORY ${OUT_DIRECTORY})
 
 set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS})
 
-cuda_add_library(yololayer SHARED src/yololayer.cu)
-set_target_properties(yololayer PROPERTIES PREFIX "")
+#cuda_add_library(yololayer SHARED src/yololayer.cu)
+#set_target_properties(yololayer PROPERTIES PREFIX "")
 
-add_library(tracker SHARED src/tracker.cpp)
-set_target_properties(tracker PROPERTIES PREFIX "")
+#add_library(tracker SHARED src/tracker.cpp)
+#set_target_properties(tracker PROPERTIES PREFIX "")
 
-add_library(polygon SHARED src/polygon.cpp)
-set_target_properties(polygon PROPERTIES PREFIX "")
+#add_library(polygon SHARED src/polygon.cpp)
+#set_target_properties(polygon PROPERTIES PREFIX "")
 
-add_executable(traffic_analysis
-  src/main.cpp
+cuda_add_library(trafficanalysis SHARED
+  meta/wrapper.hpp
   src/detect.cpp
+  src/tracker.cpp
+  src/yololayer.cu
+  src/polygon.cpp
 )
 
-target_link_libraries(traffic_analysis ${LIB_DEPENDENCIES} yololayer tracker polygon)
+add_executable(debug
+  src/main.cpp
+)
+
+target_link_libraries(trafficanalysis ${LIB_DEPENDENCIES})
+target_link_libraries(debug trafficanalysis)
 
 add_definitions(-O2 -pthread)
