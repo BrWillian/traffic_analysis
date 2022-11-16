@@ -2,6 +2,7 @@
 #define POLYGON_H
 
 #include <opencv2/opencv.hpp>
+#include "../include/yololayer.h"
 
 namespace Vehicle
 {
@@ -10,7 +11,7 @@ namespace Vehicle
     public:
 
         Polygon(std::vector<std::vector<cv::Point>> &polygons);
-        std::vector<std::vector<int>> checkAreaBoxes(std::vector<std::vector<int>> &boxes);
+        void checkAreaBoxes(std::vector<Yolo::Detection> &dets);
 
 
     private:
@@ -20,10 +21,10 @@ namespace Vehicle
         };
 
         std::vector<std::vector<cv::Point>> polygons{};
-        bool checkInside(std::vector<cv::Point> poly, cv::Point point);
-        bool onLine(Line l1, cv::Point p);
-        int direction(cv::Point a, cv::Point b, cv::Point c);
-        bool isIntersect(Line l1, Line l2);
+        static bool checkInside(std::vector<cv::Point> poly, cv::Point &point);
+        static bool onLine(Line l1, cv::Point p);
+        static int direction(cv::Point a, cv::Point b, cv::Point c);
+        static bool isIntersect(Line l1, Line l2);
     };
 }
 
