@@ -1,6 +1,5 @@
 #include "../include/detect.h"
 #include "../generated/weights.h"
-#include "../generated/version.h"
 
 Vehicle::Detect::Detect()
 {
@@ -9,12 +8,14 @@ Vehicle::Detect::Detect()
     this->maxInputSize = 1920*1080;
     this->outputBlobName = "prob";
     this->inputBlobName = "data";
-    this->confThresh = 0.5;
-    this->nmsThresh = 0.4;
+    this->confThresh = 0.3;
+    this->nmsThresh = 0.2;
     this->batchSize = 1;
     this->inputH = 640;
     this->inputW = 640;
     this->numClasses = 6;
+
+    createContextExecution();
 }
 Vehicle::Detect::~Detect(){
     this->runtime.reset(nullptr);
@@ -82,6 +83,14 @@ std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
     CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, nullptr));
 
     nms(result, outputBuffer);
+
+    for(auto &it: result){
+        cv::Rect r = getRect(img, it.bbox);
+        it.bbox[0] = r.x;
+        it.bbox[1] = r.y;
+        it.bbox[2] = r.width;
+        it.bbox[3] = r.height;
+    }
 
     return result;
 }
@@ -151,10 +160,4 @@ cv::Rect Vehicle::Detect::getRect(cv::Mat &img, float bbox[4]){
         b = b / r_h;
     }
     return cv::Rect(round(l), round(t), round(r - l), round(b - t));
-}
-const char* Vehicle::Detect::getVersion(){
-    return VERSION "-" GIT_BRANCH "-" GIT_COMMIT_HASH;
-}
-const char* Vehicle::Detect::getWVersion(){
-    return W_VERSION "-" W_HASH;
 }
