@@ -111,7 +111,7 @@ set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS})
 #set_target_properties(polygon PROPERTIES PREFIX "")
 
 cuda_add_library(trafficanalysis SHARED
-  meta/wrapper.hpp
+  src/wrapper.cpp
   src/detect.cpp
   src/tracker.cpp
   src/yololayer.cu
@@ -119,7 +119,7 @@ cuda_add_library(trafficanalysis SHARED
 )
 
 add_executable(debug
-  examples/main_wrapper.cpp
+  examples/cpp/example.cpp
 #  debug/main.cpp
 )
 
