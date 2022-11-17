@@ -8,8 +8,8 @@ Vehicle::Detect::Detect()
     this->maxInputSize = 1920*1080;
     this->outputBlobName = "prob";
     this->inputBlobName = "data";
-    this->confThresh = 0.3;
-    this->nmsThresh = 0.2;
+    this->confThresh = 0.5;
+    this->nmsThresh = 0.4;
     this->batchSize = 1;
     this->inputH = 640;
     this->inputW = 640;
