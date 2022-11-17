@@ -119,7 +119,8 @@ cuda_add_library(trafficanalysis SHARED
 )
 
 add_executable(debug
-  src/main.cpp
+  examples/main_wrapper.cpp
+#  debug/main.cpp
 )
 
 target_link_libraries(trafficanalysis ${LIB_DEPENDENCIES})
