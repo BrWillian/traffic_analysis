@@ -80,7 +80,7 @@ std::vector<std::pair<int, std::pair<int, int>>> Vehicle::Tracker::update(std::v
 
 //        Calculate Distances
         vector<vector<float>> Distances;
-        for (int i = 0; i < objectCentroids.size(); ++i) {
+        for (size_t i = 0; i < objectCentroids.size(); ++i) {
             vector<float> temp_D;
             for (vector<vector<int>>::size_type j = 0; j < inputCentroids.size(); ++j) {
                 double dist = calcDistance(objectCentroids[i].first, objectCentroids[i].second, inputCentroids[j].first,
@@ -126,13 +126,13 @@ std::vector<std::pair<int, std::pair<int, int>>> Vehicle::Tracker::update(std::v
         set<int> usedCols;
 
         //loop over the combination of the (rows, columns) index tuples
-        for (int i = 0; i < rows.size(); i++) {
+        for (size_t i = 0; i < rows.size(); i++) {
             //if we have already examined either the row or column value before, ignore it
             //if (usedRows.count(rows[i]) || usedCols.count(cols[i])) { continue; }
             //otherwise, grab the object ID for the current row, set its new centroid,
             // and reset the disappeared counter
             int objectID = objectIDs[rows[i]];
-            for (int t = 0; t < this->objects.size(); t++) {
+            for (size_t t = 0; t < this->objects.size(); t++) {
                 double dist = calcDistance(this->objects[t].second.first, this->objects[t].second.second, inputCentroids[cols[i]].first, inputCentroids[cols[i]].second);
                 if(dist > 150) continue;
 
@@ -156,11 +156,11 @@ std::vector<std::pair<int, std::pair<int, int>>> Vehicle::Tracker::update(std::v
         set<int> inpCols;
 
         //D.shape[0]
-        for (int i = 0; i < objectCentroids.size(); i++) {
+        for (size_t i = 0; i < objectCentroids.size(); i++) {
             objRows.insert(i);
         }
         //D.shape[1]
-        for (int i = 0; i < inputCentroids.size(); i++) {
+        for (size_t i = 0; i < inputCentroids.size(); i++) {
             inpCols.insert(i);
         }
 
