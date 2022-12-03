@@ -39,7 +39,7 @@ extern "C" {
     struct Detection{
         const char* class_name;
         int bbox[4];
-        Point centroid;
+//        Point centroid;
         float conf;
         int obj_id;
     };
@@ -48,7 +48,7 @@ extern "C" {
 
     VEHICLEDETECT_API void C_vehicleDetectDestroy(vehicle_t* vh);
 
-    VEHICLEDETECT_API const char* C_doInference(vehicle_t* vh, const char* imgData, size_t imgSize);
+    VEHICLEDETECT_API const char* C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSize);
 
     VEHICLEDETECT_API const char* C_getVersion();
 

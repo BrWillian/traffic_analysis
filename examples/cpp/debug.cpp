@@ -2,9 +2,9 @@
 #include <chrono>
 #include <thread>
 #include <opencv2/opencv.hpp>
-#include "../include/tracker.h"
-#include "../include/detect.h"
-#include "../include/polygon.h"
+#include "../../include/tracker.h"
+#include "../../include/detect.h"
+#include "../../include/polygon.h"
 
 int main(int argc, char *argv[])
 {
@@ -80,10 +80,10 @@ int main(int argc, char *argv[])
         cv::addWeighted(frame, 1.0, layer, 0.3, 0, frame);
 
 
-//        for(auto &it: res){
-//            cv::rectangle(frame, cv::Point(it.bbox[0], it.bbox[1]), cv::Point(it.bbox[2]+it.bbox[0], it.bbox[3]+it.bbox[1]), cv::Scalar(0, 255, 0), 1);
-//            cv::putText(frame, classes[(int)it.class_id], cv::Point(it.bbox[0], it.bbox[1]), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
-//        }
+        for(auto &it: res){
+            cv::rectangle(frame, cv::Point(it.bbox[0], it.bbox[1]), cv::Point(it.bbox[2]+it.bbox[0], it.bbox[3]+it.bbox[1]), cv::Scalar(0, 255, 0), 1);
+            cv::putText(frame, classes[(int)it.class_id], cv::Point(it.bbox[0], it.bbox[1]), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
+        }
 
         checkArea->checkAreaBoxes(res);
 
@@ -91,8 +91,8 @@ int main(int argc, char *argv[])
 
         for(size_t i = 0; i<objects.size(); i++)
         {
-            cv::putText(frame, classes[(int)res[i].class_id], cv::Point(res[i].bbox[0], res[i].bbox[1]), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
-            cv::rectangle(frame, cv::Point(res[i].bbox[0], res[i].bbox[1]), cv::Point(res[i].bbox[2]+res[i].bbox[0], res[i].bbox[3]+res[i].bbox[1]), cv::Scalar(0, 255, 0), 1);
+//            cv::putText(frame, classes[(int)res[i].class_id], cv::Point(res[i].bbox[0], res[i].bbox[1]), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
+//            cv::rectangle(frame, cv::Point(res[i].bbox[0], res[i].bbox[1]), cv::Point(res[i].bbox[2]+res[i].bbox[0], res[i].bbox[3]+res[i].bbox[1]), cv::Scalar(0, 255, 0), 1);
             cv::circle(frame, cv::Point(objects[i].second.first, objects[i].second.second), 5, cv::Scalar(0, 0, 255), -1);
             cv::putText(frame, std::to_string(objects[i].first), cv::Point(objects[i].second.first - 10, objects[i].second.second - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
         }
@@ -103,19 +103,19 @@ int main(int argc, char *argv[])
 //            cv::putText(frame, ID, cv::Point(it.second.first - 10, it.second.second - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
 //        }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+       // std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 
 
 
-        cv::imshow("name", frame);
+//        cv::imshow("name", frame);
 
-        char c=(char)cv::waitKey(1);
-            if(c==27)
-              break;
+//        char c=(char)cv::waitKey(1);
+//            if(c==27)
+//              break;
 
-        //cv::resize(frame, frame, cv::Size(960,720));
-        //video.write(frame);
+        cv::resize(frame, frame, cv::Size(960,720));
+        video.write(frame);
         auto end = std::chrono::high_resolution_clock::now();
 
 

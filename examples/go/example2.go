@@ -1,9 +1,8 @@
 package main
 
 /*
-#cgo CFLAGS: -I../wrapper
-#cgo LDFLAGS: -ltrafficanalysis
-#include "wrapper/wrapper.h"
+#cgo LDFLAGS: -L. -ltrafficanalysis
+#include "../../meta/wrapper.h"
 */
 import "C"
 import (
@@ -48,7 +47,7 @@ func VehicleDetectInference(vh VehicleDetect, img image.Image) string {
 
 	b := buf.Bytes()
 
-	result := C.C_doInference(vh.ptr, (*C.char)(unsafe.Pointer(&b[0])), C.int(buf.Len()))
+	result := C.C_doInference(vh.ptr, (*C.uchar)(unsafe.Pointer(&b[0])), C.int(buf.Len()))
 
 	return C.GoString(result)
 }
@@ -66,14 +65,14 @@ func main() {
 	pointer := VehicleDetectConstruct()
 	fmt.Println(pointer)
 
-	files, err := ioutil.ReadDir("./images/")
+	files, err := ioutil.ReadDir("/root/imagem/")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, file := range files {
 
-		img, _ := getImageFromFilePath("./images/" + file.Name())
+		img, _ := getImageFromFilePath("/root/imagem/" + file.Name())
 
 		start := time.Now()
 

@@ -43,9 +43,9 @@ std::string Serialize(std::vector<Detection> &res){
     {
         ss << "{\"id\":"<<vh->obj_id;
         ss << ",\"classe\":\""<<vh->class_name;
-        ss << "\",\"centroid\":["<<vh->centroid.x;
-        ss << ","<<vh->centroid.y<<"]";
-        ss << ",\"x\":"<<vh->bbox[0];
+//        ss << "\",\"centroid\":["<<vh->centroid.x;
+//        ss << ","<<vh->centroid.y<<"]";
+        ss << "\",\"x\":"<<vh->bbox[0];
         ss << ",\"y\":"<<vh->bbox[1];
         ss << ",\"w\":"<<vh->bbox[2];
         ss << ",\"h\":"<<vh->bbox[3];
@@ -60,10 +60,10 @@ std::string Serialize(std::vector<Detection> &res){
 
     return ss.str();
 }
-const char* CDECL C_doInference(vehicle_t* vh, const char* imgData, size_t imgSize){
-    if(vh == nullptr){
-        std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
-    }
+const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSize){
+//    if(vh == nullptr){
+//        std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
+//    }
     Vehicle::Detect *det;
     Vehicle::Tracker *tracker;
     Vehicle::Polygon *checkArea;
@@ -72,14 +72,44 @@ const char* CDECL C_doInference(vehicle_t* vh, const char* imgData, size_t imgSi
     tracker = static_cast<Vehicle::Tracker*>(vh->trackerObj);
     checkArea = static_cast<Vehicle::Polygon*>(vh->areaCheck);
 
-    std::vector<uchar> data(imgData, imgData + imgSize);
-    cv::Mat img = cv::imdecode(cv::Mat(data), -1);
 
-    std::vector<Yolo::Detection> detects = det->doInference(img);
+//    int h = 960;
+//    int w = 1280;
+//    int slice_size = 1280*960; // w*h
+
+//    cv::Mat R(h,w,CV_8U, imgData);
+//    cv::Mat G(h,w,CV_8U, imgData+slice_size);
+//    cv::Mat B(h,w,CV_8U, imgData+(2*slice_size));
+
+//    cv::Mat chan[] {B,G,R}; // BGR order for opencv !
+//    cv::Mat final;
+//    cv::merge(chan, 3, final);
+
+//    unsigned char *img_data_ptr = (unsigned char*) &imgData;
+
+//    std::vector<uchar> data(imgData, imgData + imgSize);
+    //memcpy(vh->imgBuffer.data, imgData, 1280*960*3*sizeof(uchar));
+
+
+//    cv::imshow("",final);
+//    cv::waitKey(0);
+
+
+    //cv::imwrite("img.jpg", img);
+
+    std::vector<uchar> data(imgData, imgData + imgSize);
+//    memcpy(vh->imgBuffer.data, imgData, 1280*960*3*sizeof(uchar));
+    cv::Mat img = cv::imdecode(cv::Mat(data), -1);
+//    cv::imwrite("img.jpg", img);
+//    vh->imgBuffer.reshape(3, 1280);
+//    cv::imwrite("img.jpg", vh->imgBuffer);
+
+
+    auto detects = det->doInference(img);
 
     checkArea->checkAreaBoxes(detects);
 
-    std::vector<std::pair<int, std::pair<int, int>>> objects = tracker->update(detects);
+    auto objects = tracker->update(detects);
 
     std::vector<Detection> res;
 
@@ -93,8 +123,8 @@ const char* CDECL C_doInference(vehicle_t* vh, const char* imgData, size_t imgSi
         det_t.class_name = classes[(int)detects[i].class_id];
         det_t.conf = detects[i].conf;
         det_t.obj_id = objects[i].first;
-        det_t.centroid.x = objects[i].second.first;
-        det_t.centroid.y = objects[i].second.second;
+//        det_t.centroid.x = objects[i].second.first;
+//        det_t.centroid.y = objects[i].second.second;
         res.push_back(det_t);
     }
 
@@ -137,8 +167,8 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
         det_t.class_name = classes[(int)detects[i].class_id];
         det_t.conf = detects[i].conf;
         det_t.obj_id = objects[i].first;
-        det_t.centroid.x = objects[i].second.first;
-        det_t.centroid.y = objects[i].second.second;
+//        det_t.centroid.x = objects[i].second.first;
+//        det_t.centroid.y = objects[i].second.second;
         res.push_back(det_t);
     }
 
