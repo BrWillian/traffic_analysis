@@ -4,6 +4,7 @@
 #include "../include/tracker.h"
 #include "../include/polygon.h"
 #include "../generated/version.h"
+#include <libconfig.h++>
 #include <opencv2/opencv.hpp>
 
 
