@@ -191,18 +191,18 @@ std::vector<std::vector<cv::Point>> getPolygons() {
                   << " - " << pex.getError() << std::endl;
         exit(EXIT_FAILURE);
     }
-    const Setting& root = cfg.getRoot();
-    const Setting &polys = root["polygons"];
+    const libconfig::Setting& root = cfg.getRoot();
+    const libconfig::Setting &polys = root["polygons"];
     std::vector<std::vector<int>> global_cords;
     for (int i = 0; i < polys.getLength(); ++i) {
-        const Setting &poly = polys[i];
+        const libconfig::Setting &poly = polys[i];
         std::vector<int> cords;
         for(int j=0; j<poly.getLength(); ++j){
-            const Setting &point = poly[i];
+            const libconfig::Setting &point = poly[i];
 
             for(int k=0; k<point.getLength(); k++)
             {
-                const Setting &cord = poly[j];
+                const libconfig::Setting &cord = poly[j];
                 cords.push_back(cord[k]);
             }
         }
