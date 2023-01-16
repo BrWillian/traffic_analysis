@@ -183,13 +183,13 @@ std::vector<std::vector<cv::Point>> getPolygons() {
     }catch(const libconfig::FileIOException &fioex)
     {
         std::cerr << "I/O error while reading file." << std::endl;
-        return(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
     catch(const libconfig::ParseException &pex)
     {
         std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
                   << " - " << pex.getError() << std::endl;
-        return(EXIT_FAILURE);
+        exit(EXIT_FAILURE)
     }
     const Setting& root = cfg.getRoot();
     const Setting &polys = root["polygons"];
