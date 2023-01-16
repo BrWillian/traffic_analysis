@@ -176,7 +176,7 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
     return Serialize(res);
 }
 std::vector<std::vector<cv::Point>> getPolygons() {
-    Config cfg;
+    libconfig::Config cfg;
     const char* cfg_file = "config.cfg";
     try {
         cfg.readFile(cfg_file);
