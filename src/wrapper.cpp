@@ -180,12 +180,12 @@ std::vector<std::vector<cv::Point>> getPolygons() {
     const char* cfg_file = "config.cfg";
     try {
         cfg.readFile(cfg_file);
-    }catch(const FileIOException &fioex)
+    }catch(const libconfig::FileIOException &fioex)
     {
         std::cerr << "I/O error while reading file." << std::endl;
         return(EXIT_FAILURE);
     }
-    catch(const ParseException &pex)
+    catch(const libconfig::ParseException &pex)
     {
         std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
                   << " - " << pex.getError() << std::endl;
