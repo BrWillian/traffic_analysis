@@ -219,6 +219,13 @@ std::vector<std::vector<cv::Point>> getPolygons() {
         }
         polygons.push_back(points);
     }
+    int conta = 1;
+    for(auto& it: polygons){
+        std::cout<<"Added polygon: "<<++conta<<std::endl;
+        for(auto &poly: it){
+            std::cout<<"X: "<<poly.x<<" Y: "<<poly.y<<std::endl;
+        }
+    }
 
     return polygons;
 }
