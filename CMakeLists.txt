@@ -85,8 +85,13 @@ if(NOT DEFINED TENSORRT_LIBS)
     find_library(NVONNXPARSER NAMES nvonnxparser)
 endif()
 
+if(NOT DEFINED LIBCONFIG_LIBS)
+    message(WARNING "-DLIBCONFIG_LIBS não foi utilizada..")
+    find_library(LIBCONFIG++ NAMES libconfig)
+endif()
+
 if(NVINFER AND NVINFERPLUGIN AND NVPARSERS AND NVONNXPARSER)
-    list(APPEND TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser)
+    list(APPEND TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser libconfig)
 endif()
 
 message("Libraries: " ${OpenCV_LIBS} ${TENSORRT_LIBS} ${CUDA_LIBRARIES})
