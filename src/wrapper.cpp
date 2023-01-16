@@ -189,7 +189,7 @@ std::vector<std::vector<cv::Point>> getPolygons() {
     {
         std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
                   << " - " << pex.getError() << std::endl;
-        exit(EXIT_FAILURE)
+        exit(EXIT_FAILURE);
     }
     const Setting& root = cfg.getRoot();
     const Setting &polys = root["polygons"];
