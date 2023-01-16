@@ -60,6 +60,7 @@ extern "C" {
 
 #ifdef __cplusplus
     VEHICLEDETECT_API std::string doInference(vehicle_t* vh, cv::Mat& img);
+    VEHICLEDETECT_API std::vector<std::vector<cv::Point>> getPolygons();
 #endif
 
 #endif // WRAPPER_H

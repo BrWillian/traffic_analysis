@@ -13,7 +13,7 @@ vehicle_t* CDECL C_vehicleDetect(){
     Vehicle::Detect *vh = new Vehicle::Detect();
     Vehicle::Tracker *tracker = new Vehicle::Tracker(0);
 
-    std::vector<std::vector<cv::Point>> polygons{{cv::Point(60, 340), cv::Point(1115, 335), cv::Point(1270, 610), cv::Point(0, 640)}};
+    std::vector<std::vector<cv::Point>> polygons = getPolygons();//{{cv::Point(60, 340), cv::Point(1115, 335), cv::Point(1270, 610), cv::Point(0, 640)}};
 
     Vehicle::Polygon *checkArea = new Vehicle::Polygon(polygons);
 
@@ -173,4 +173,51 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
     }
 
     return Serialize(res);
+}
+std::vector<std::vector<cv::Point>> getPolygons() {
+    Config cfg;
+    const char* cfg_file = "config.cfg";
+    try {
+        cfg.readFile(cfg_file);
+    }catch(const FileIOException &fioex)
+    {
+        std::cerr << "I/O error while reading file." << std::endl;
+        return(EXIT_FAILURE);
+    }
+    catch(const ParseException &pex)
+    {
+        std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
+                  << " - " << pex.getError() << std::endl;
+        return(EXIT_FAILURE);
+    }
+    const Setting& root = cfg.getRoot();
+    const Setting &polys = root["polygons"];
+    std::vector<std::vector<int>> global_cords;
+    for (int i = 0; i < polys.getLength(); ++i) {
+        const Setting &poly = polys[i];
+        std::vector<int> cords;
+        for(int j=0; j<poly.getLength(); ++j){
+            const Setting &point = poly[i];
+
+            for(int k=0; k<point.getLength(); k++)
+            {
+                const Setting &cord = poly[j];
+                cords.push_back(cord[k]);
+            }
+        }
+        global_cords.push_back(cords);
+    }
+    std::vector<std::vector<cv::Point>> polygons;
+
+    for(auto & global_cord : global_cords)
+    {
+        std::vector<cv::Point> points;
+        for(int j=0; j<global_cord.size()-1; j++){
+            int k = j++;
+            points.emplace_back(global_cord[k], global_cord[j]);
+        }
+        polygons.push_back(points);
+    }
+
+    return polygons;
 }
