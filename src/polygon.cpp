@@ -48,36 +48,35 @@ bool Vehicle::Polygon::checkInside(std::vector<cv::Point> poly, cv::Point &point
     int i = 0;
 
     do{
-        Line side = {poly[i], poly[(i+1) % 4]};
+        Line side = {poly[i], poly[(i+1) % poly.size()]};
         if(Vehicle::Polygon::isIntersect(side, exline)){
             if(Vehicle::Polygon::direction(side.p1, point, side.p2) == 0){
                 return Vehicle::Polygon::onLine(side, point);
             }
             count++;
         }
-        i = (i + 1) % 4;
+        i = (i + 1) % poly.size();
     }while(i != 0);
 
     return count & 1;
 }
-void Vehicle::Polygon::checkAreaBoxes(std::vector<Yolo::Detection> &dets){
-
+std::vector<Yolo::Detection> Vehicle::Polygon::checkAreaBoxes(std::vector<Yolo::Detection> boxes){
+    std::vector<Yolo::Detection> boxTmp{};
     for(auto &poly: polygons)
     {
-        for(auto it = dets.begin(); it != dets.end();)
+        for(auto &box: boxes)
         {
 
-            int cX = int(it->bbox[0] + it->bbox[2] / 2.0);
-            int cY = int(it->bbox[1] + it->bbox[3] / 2.0);
+            int cX = int(box.bbox[0] + box.bbox[2] / 2.0);
+            int cY = int(box.bbox[1] + box.bbox[3] / 2.0);
             cv::Point point{cX, cY};
 
-            if(!Vehicle::Polygon::checkInside(poly, point)){
-                dets.erase(it);
-            }else{
-                it++;
+            if(Vehicle::Polygon::checkInside(poly, point)){
+               boxTmp.push_back(box);
             }
         }
     }
 
-
+    return boxTmp;
 }
+

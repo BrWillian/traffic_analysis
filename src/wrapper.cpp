@@ -44,9 +44,9 @@ std::string Serialize(std::vector<Detection> &res){
     {
         ss << "{\"id\":"<<vh->obj_id;
         ss << ",\"classe\":\""<<vh->class_name;
-//        ss << "\",\"centroid\":["<<vh->centroid.x;
-//        ss << ","<<vh->centroid.y<<"]";
-        ss << "\",\"x\":"<<vh->bbox[0];
+        ss << "\",\"centroid\":{\"x\":"<<vh->centroid.x;
+        ss << ",\"y\":"<<vh->centroid.y<<"}";
+        ss << ",\"x\":"<<vh->bbox[0];
         ss << ",\"y\":"<<vh->bbox[1];
         ss << ",\"w\":"<<vh->bbox[2];
         ss << ",\"h\":"<<vh->bbox[3];
@@ -124,8 +124,8 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
         det_t.class_name = classes[(int)detects[i].class_id];
         det_t.conf = detects[i].conf;
         det_t.obj_id = objects[i].first;
-//        det_t.centroid.x = objects[i].second.first;
-//        det_t.centroid.y = objects[i].second.second;
+        det_t.centroid.x = objects[i].second.first;
+        det_t.centroid.y = objects[i].second.second;
         res.push_back(det_t);
     }
 
@@ -152,9 +152,9 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
 
     std::vector<Yolo::Detection> detects = det->doInference(img);
 
-    checkArea->checkAreaBoxes(detects);
+    std::vector<Yolo::Detection> detects_inside = checkArea->checkAreaBoxes(detects);
 
-    std::vector<std::pair<int, std::pair<int, int>>> objects = tracker->update(detects);
+    std::vector<std::pair<int, std::pair<int, int>>> objects = tracker->update(detects_inside);
 
     std::vector<Detection> res;
 
@@ -163,13 +163,13 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
         Detection det_t;
         det_t.bbox[0] = detects[i].bbox[0];
         det_t.bbox[1] = detects[i].bbox[1];
-        det_t.bbox[2] = detects[i].bbox[2]+detects[i].bbox[0];
-        det_t.bbox[3] = detects[i].bbox[3]+detects[i].bbox[1];
+        det_t.bbox[2] = detects[i].bbox[2];//+detects[i].bbox[0];
+        det_t.bbox[3] = detects[i].bbox[3];//+detects[i].bbox[1];
         det_t.class_name = classes[(int)detects[i].class_id];
         det_t.conf = detects[i].conf;
         det_t.obj_id = objects[i].first;
-//        det_t.centroid.x = objects[i].second.first;
-//        det_t.centroid.y = objects[i].second.second;
+        det_t.centroid.x = objects[i].second.first;
+        det_t.centroid.y = objects[i].second.second;
         res.push_back(det_t);
     }
 

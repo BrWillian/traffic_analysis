@@ -11,7 +11,7 @@ namespace Vehicle
     public:
 
         Polygon(std::vector<std::vector<cv::Point>> &polygons);
-        void checkAreaBoxes(std::vector<Yolo::Detection> &dets);
+        std::vector<Yolo::Detection> checkAreaBoxes(std::vector<Yolo::Detection> boxes);
 
 
     private:

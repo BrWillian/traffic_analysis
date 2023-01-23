@@ -2,15 +2,25 @@
 #include <chrono>
 #include <thread>
 #include <opencv2/opencv.hpp>
-#include "../../include/tracker.h"
-#include "../../include/detect.h"
-#include "../../include/polygon.h"
+#define USE_WRAPPER 1
+
+#if USE_WRAPPER == 0
+    #include "../../include/tracker.h"
+    #include "../../include/detect.h"
+    #include "../../include/polygon.h"
+#else
+    #include "../meta/wrapper.h"
+#endif
+
 
 int main(int argc, char *argv[])
 {
+#if USE_WRAPPER == 0
     auto *vh = new Vehicle::Detect();
     auto *tracker = new Vehicle::Tracker(0);
-
+#else
+    vehicle_t *vh = C_vehicleDetect();
+#endif
     //vh->createContextExecution();
 
 //    std::string images_inf[] = {"/root/imagem/img_100.jpg","/root/imagem/img_101.jpg","/root/imagem/img_102.jpg","/root/imagem/img_103.jpg","/root/imagem/img_104.jpg","/root/imagem/img_105.jpg","/root/imagem/img_106.jpg","/root/imagem/img_107.jpg","/root/imagem/img_108.jpg","/root/imagem/img_109.jpg"};
@@ -51,15 +61,15 @@ int main(int argc, char *argv[])
 
     const std::string classes[] = {"carro", "moto", "onibus", "caminhao", "van", "caminhonete"};
 
-    cv::VideoWriter video("outcpp.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(960,720));
-
 //    std::vector<std::vector<cv::Point>> polygons{
 //        {cv::Point(43, 403), cv::Point(529, 393), cv::Point(583, 624), cv::Point(2, 639)},
 //        {cv::Point(594, 510), cv::Point(655, 744), cv::Point(1275, 717), cv::Point(1187, 492)}
 //                                                };
 
-    std::vector<std::vector<cv::Point>> polygons{{cv::Point(60, 340), cv::Point(1115, 335), cv::Point(1270, 610), cv::Point(0, 640)}};
+    std::vector<std::vector<cv::Point>> polygons = getPolygons();
 
+#if USE_WRAPPER == 0
+    cv::VideoWriter video("outcpp.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(960,720));
     auto *checkArea = new Vehicle::Polygon(polygons);
 
     while(1){
@@ -126,9 +136,42 @@ int main(int argc, char *argv[])
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 
     }
+
     cap.release();
     //video.release();
 
     vh->~Detect();
+#else
+    while(1) {
+
+        cap >> frame;
+
+        if (frame.empty()) {
+            break;
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        std::string resultJson = doInference(vh, frame);
+
+        std::cout<<resultJson<<std::endl;
+
+        auto end = std::chrono::high_resolution_clock::now();
+
+        cv::Mat layer = cv::Mat::zeros(frame.size(), CV_8UC3);
+
+        cv::fillPoly(layer, polygons, cv::Scalar(0, 0, 255));
+        cv::addWeighted(frame, 1.0, layer, 0.3, 0, frame);
+
+        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+
+        cv::imshow("teste", frame);
+        char c=(char)cv::waitKey(1);
+        if(c==27)
+          break;
+    }
+    cap.release();
+    C_vehicleDetectDestroy(vh);
+#endif
 
 }

@@ -39,7 +39,7 @@ extern "C" {
     struct Detection{
         const char* class_name;
         int bbox[4];
-//        Point centroid;
+        Point centroid;
         float conf;
         int obj_id;
     };
