@@ -87,14 +87,14 @@ endif()
 
 if(NOT DEFINED LIBCONFIG_LIBS)
     message(WARNING "-DLIBCONFIG_LIBS não foi utilizada..")
-    find_library(LIBCONFIG++ NAMES libconfig)
+    find_library(LIBCONFIGCPP config++)
 endif()
 
 if(NVINFER AND NVINFERPLUGIN AND NVPARSERS AND NVONNXPARSER)
-    list(APPEND TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser libconfig)
+    list(APPEND TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser)
 endif()
 
-message("Libraries: " ${OpenCV_LIBS} ${TENSORRT_LIBS} ${CUDA_LIBRARIES})
+message("Libraries: "${OpenCV_LIBS} ${TENSORRT_LIBS} ${LIBCONFIGCPP})
 
 set(OUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
@@ -104,7 +104,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUT_DIRECTORY})
 
 file(MAKE_DIRECTORY ${OUT_DIRECTORY})
 
-set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS})
+set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS} ${LIBCONFIGCPP})
 
 #cuda_add_library(yololayer SHARED src/yololayer.cu)
 #set_target_properties(yololayer PROPERTIES PREFIX "")
@@ -116,17 +116,17 @@ set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS})
 #set_target_properties(polygon PROPERTIES PREFIX "")
 
 cuda_add_library(trafficanalysis SHARED
-  src/wrapper.cpp
-  src/detect.cpp
-  src/tracker.cpp
-  src/yololayer.cu
-  src/polygon.cpp
-)
+        src/wrapper.cpp
+        src/detect.cpp
+        src/tracker.cpp
+        src/yololayer.cu
+        src/polygon.cpp
+        )
 
 add_executable(debug
-  examples/cpp/example.cpp
-#  debug/main.cpp
-)
+        examples/cpp/debug.cpp
+        #  debug/main.cpp
+        )
 
 target_link_libraries(trafficanalysis ${LIB_DEPENDENCIES})
 target_link_libraries(debug trafficanalysis)
