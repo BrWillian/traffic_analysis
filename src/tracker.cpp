@@ -2,25 +2,25 @@
 
 using namespace std;
 
-Vehicle::Tracker::Tracker(int maxDisappeared)
+Tracker::Tracker(int maxDisappeared)
 {
     this->nextObjectID = 0;
     this->maxDisappeared = maxDisappeared;
 }
-double Vehicle::Tracker::calcDistance(double x1, double y1, double x2, double y2){
+double Tracker::calcDistance(double x1, double y1, double x2, double y2){
     double x = x1 - x2;
     double y = y1 - y2;
     double dist = std::sqrt((x * x) + (y * y));
 
     return dist;
 }
-void Vehicle::Tracker::register_Object(int cX, int cY){
+void Tracker::register_Object(int cX, int cY){
     int objID = this->nextObjectID;
     this->objects.push_back({objID, {cX, cY}});
     this->disappeared.insert({objID, 0});
     this->nextObjectID += 1;
 }
-void Vehicle::Tracker::deleteObject(int objectID){
+void Tracker::deleteObject(int objectID){
     this->objects.erase(remove_if(this->objects.begin(), this->objects.end(), [objectID](auto &elem) {
         return elem.first == objectID;
     }), this->objects.end());
@@ -35,7 +35,7 @@ std::vector<float>::size_type findMin(const std::vector<float> &v, std::vector<f
     }
     return (min);
 }
-std::vector<std::pair<int, std::pair<int, int>>> Vehicle::Tracker::update(std::vector<Yolo::Detection> &dets) {
+std::vector<std::pair<int, std::pair<int, int>>> Tracker::update(std::vector<Yolo::Detection> &dets) {
     if (dets.empty()) {
         auto it = this->disappeared.begin();
         while (it != this->disappeared.end()) {

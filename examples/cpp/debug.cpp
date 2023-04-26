@@ -2,7 +2,7 @@
 #include <chrono>
 #include <thread>
 #include <opencv2/opencv.hpp>
-#define USE_WRAPPER 1
+#define USE_WRAPPER 0
 
 #if USE_WRAPPER == 0
     #include "../../include/tracker.h"
@@ -16,8 +16,8 @@
 int main(int argc, char *argv[])
 {
 #if USE_WRAPPER == 0
-    auto *vh = new Vehicle::Detect();
-    auto *tracker = new Vehicle::Tracker(0);
+    auto *vh = new Detect();
+    auto *tracker = new Tracker(0);
 #else
     vehicle_t *vh = C_vehicleDetect();
 #endif
@@ -35,9 +35,9 @@ int main(int argc, char *argv[])
 //        auto end = std::chrono::high_resolution_clock::now();
 
 
-////        for(auto &it: res){
-////            std::cout<<it.class_id<<std::endl;
-////        }
+//        for(auto &it: res){
+//            std::cout<<it.class_id<<std::endl;
+//        }
 
 //        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -61,18 +61,18 @@ int main(int argc, char *argv[])
 
     const std::string classes[] = {"carro", "moto", "onibus", "caminhao", "van", "caminhonete"};
 
-//    std::vector<std::vector<cv::Point>> polygons{
-//        {cv::Point(43, 403), cv::Point(529, 393), cv::Point(583, 624), cv::Point(2, 639)},
-//        {cv::Point(594, 510), cv::Point(655, 744), cv::Point(1275, 717), cv::Point(1187, 492)}
-//                                                };
+    std::vector<std::vector<cv::Point>> polygons{
+        {cv::Point(43, 403), cv::Point(529, 393), cv::Point(583, 624), cv::Point(2, 639)},
+        {cv::Point(594, 510), cv::Point(655, 744), cv::Point(1275, 717), cv::Point(1187, 492)}
+                                                };
 
-    std::vector<std::vector<cv::Point>> polygons = getPolygons();
+//    std::vector<std::vector<cv::Point>> polygons = getPolygons();
 
 #if USE_WRAPPER == 0
-    cv::VideoWriter video("outcpp.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(960,720));
-    auto *checkArea = new Vehicle::Polygon(polygons);
+    //cv::VideoWriter video("outcpp.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(960,720));
+    auto *checkArea = new Polygon(polygons);
 
-    while(1){
+    while(true){
 
         cap >> frame;
 
@@ -118,14 +118,14 @@ int main(int argc, char *argv[])
 
 
 
-//        cv::imshow("name", frame);
+        cv::imshow("name", frame);
 
-//        char c=(char)cv::waitKey(1);
-//            if(c==27)
-//              break;
+        char c=(char)cv::waitKey(50);
+            if(c==27)
+              break;
 
         cv::resize(frame, frame, cv::Size(960,720));
-        video.write(frame);
+        //video.write(frame);
         auto end = std::chrono::high_resolution_clock::now();
 
 
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 
         cv::imshow("teste", frame);
-        char c=(char)cv::waitKey(1);
+        char c=(char)cv::waitKey(30);
         if(c==27)
           break;
     }

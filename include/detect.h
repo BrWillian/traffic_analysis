@@ -37,59 +37,57 @@ REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
 
 static Logger gLogger;
 
-namespace Vehicle
+class Detect
 {
-    class Detect
-    {
-    private:
+private:
 
-        uint8_t batchSize{};
-        uint8_t numClasses{};
-        uint32_t outputSize{};
-        uint16_t inputH{};
-        uint16_t inputW{};
-        uint32_t maxInputSize{};
-        const char* inputBlobName{};
-        const char* outputBlobName{};
-        float nmsThresh{};
-        float confThresh{};
+    uint8_t batchSize{};
+    uint8_t numClasses{};
+    uint32_t outputSize{};
+    uint16_t inputH{};
+    uint16_t inputW{};
+    uint32_t maxInputSize{};
+    const char* inputBlobName{};
+    const char* outputBlobName{};
+    float nmsThresh{};
+    float confThresh{};
 
-        float *imgBuffer{};
-        float *outputBuffer{};
-        std::vector<void *> buffers{};
-        uint8_t inputIndex{};
-        uint8_t outputIndex{};
+    float *imgBuffer{};
+    float *outputBuffer{};
+    std::vector<void *> buffers{};
+    uint8_t inputIndex{};
+    uint8_t outputIndex{};
 
-        struct TRTDelete{
-            template<class T>
-            void operator()(T* obj) const
-            {
-                delete obj;
-            }
-        };
-
+    struct TRTDelete{
         template<class T>
-        using TRTptr = std::unique_ptr<T, TRTDelete>;
-
-        TRTptr<nvinfer1::IRuntime> runtime{nullptr};
-        TRTptr<nvinfer1::ICudaEngine> engine{nullptr};
-        TRTptr<nvinfer1::IExecutionContext> context{nullptr};
-
-    protected:
-        void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
-        static float iou(float lbox[4], float rbox[4]);
-        void nms(std::vector<Yolo::Detection>& res, float *output) const;
-        static bool cmp(const Yolo::Detection& a, const Yolo::Detection& b);
-        cv::Rect getRect(cv::Mat& img, float bbox[4]);
-        void createContextExecution();
-
-    public:
-        Detect();
-        ~Detect();
-
-        std::vector<Yolo::Detection> doInference(cv::Mat& img);
-
+        void operator()(T* obj) const
+        {
+            delete obj;
+        }
     };
-}
+
+    template<class T>
+    using TRTptr = std::unique_ptr<T, TRTDelete>;
+
+    TRTptr<nvinfer1::IRuntime> runtime{nullptr};
+    TRTptr<nvinfer1::ICudaEngine> engine{nullptr};
+    TRTptr<nvinfer1::IExecutionContext> context{nullptr};
+
+protected:
+    void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
+    static float iou(float lbox[4], float rbox[4]);
+    void nms(std::vector<Yolo::Detection>& res, float *output) const;
+    static bool cmp(const Yolo::Detection& a, const Yolo::Detection& b);
+    cv::Rect getRect(cv::Mat& img, float bbox[4]);
+    void createContextExecution();
+
+public:
+    Detect();
+    ~Detect();
+
+    std::vector<Yolo::Detection> doInference(cv::Mat& img);
+
+};
+
 
 #endif // DETECT_H

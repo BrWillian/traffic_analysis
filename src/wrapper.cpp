@@ -11,12 +11,12 @@
 vehicle_t* CDECL C_vehicleDetect(){
     vehicle_t* objwrapper;
 
-    Vehicle::Detect *vh = new Vehicle::Detect();
-    Vehicle::Tracker *tracker = new Vehicle::Tracker(0);
+    Detect *vh = new Detect();
+    Tracker *tracker = new Tracker(0);
 
     std::vector<std::vector<cv::Point>> polygons = getPolygons();//{{cv::Point(60, 340), cv::Point(1115, 335), cv::Point(1270, 610), cv::Point(0, 640)}};
 
-    Vehicle::Polygon *checkArea = new Vehicle::Polygon(polygons);
+    Polygon *checkArea = new Polygon(polygons);
 
     objwrapper = (typeof(objwrapper)) malloc(sizeof(*objwrapper));
 
@@ -31,9 +31,9 @@ void CDECL C_vehicleDetectDestroy(vehicle_t* vh){
     if(vh == nullptr){
         std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
     }
-    delete static_cast<Vehicle::Detect*>(vh->detectObj);
-    delete static_cast<Vehicle::Tracker*>(vh->trackerObj);
-    delete static_cast<Vehicle::Polygon*>(vh->areaCheck);
+    delete static_cast<Detect*>(vh->detectObj);
+    delete static_cast<Tracker*>(vh->trackerObj);
+    delete static_cast<Polygon*>(vh->areaCheck);
     free(vh);
 }
 
@@ -65,13 +65,13 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
 //    if(vh == nullptr){
 //        std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
 //    }
-    Vehicle::Detect *det;
-    Vehicle::Tracker *tracker;
-    Vehicle::Polygon *checkArea;
+    Detect *det;
+    Tracker *tracker;
+    Polygon *checkArea;
 
-    det = static_cast<Vehicle::Detect*>(vh->detectObj);
-    tracker = static_cast<Vehicle::Tracker*>(vh->trackerObj);
-    checkArea = static_cast<Vehicle::Polygon*>(vh->areaCheck);
+    det = static_cast<Detect*>(vh->detectObj);
+    tracker = static_cast<Tracker*>(vh->trackerObj);
+    checkArea = static_cast<Polygon*>(vh->areaCheck);
 
 
 //    int h = 960;
@@ -142,13 +142,13 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
     if(vh == nullptr){
         std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
     }
-    Vehicle::Detect *det;
-    Vehicle::Tracker *tracker;
-    Vehicle::Polygon *checkArea;
+    Detect *det;
+    Tracker *tracker;
+    Polygon *checkArea;
 
-    det = static_cast<Vehicle::Detect*>(vh->detectObj);
-    tracker = static_cast<Vehicle::Tracker*>(vh->trackerObj);
-    checkArea = static_cast<Vehicle::Polygon*>(vh->areaCheck);
+    det = static_cast<Detect*>(vh->detectObj);
+    tracker = static_cast<Tracker*>(vh->trackerObj);
+    checkArea = static_cast<Polygon*>(vh->areaCheck);
 
     std::vector<Yolo::Detection> detects = det->doInference(img);
 

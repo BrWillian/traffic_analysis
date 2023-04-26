@@ -1,15 +1,15 @@
 #include "../include/detect.h"
 #include "../generated/weights.h"
 
-Vehicle::Detect::Detect()
+Detect::Detect()
 {
     cudaSetDevice(0);
-    this->outputSize = 20 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+    this->outputSize = 1000 * sizeof(Yolo::Detection) / sizeof(float) + 1;
     this->maxInputSize = 1920*1080;
     this->outputBlobName = "prob";
     this->inputBlobName = "data";
-    this->confThresh = 0.5;
-    this->nmsThresh = 0.4;
+    this->confThresh = 0.1;
+    this->nmsThresh = 0.1;
     this->batchSize = 1;
     this->inputH = 640;
     this->inputW = 640;
@@ -17,14 +17,14 @@ Vehicle::Detect::Detect()
 
     createContextExecution();
 }
-Vehicle::Detect::~Detect(){
+Detect::~Detect(){
     this->runtime.reset(nullptr);
     this->context.reset(nullptr);
     this->engine.reset(nullptr);
     CUDA_CHECK(cudaFree(buffers[inputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
 }
-void Vehicle::Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray) const{
+void Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray) const{
 
     float r_w = inputW / (img.cols*1.0);
     float r_h = inputH / (img.rows*1.0);
@@ -56,7 +56,7 @@ void Vehicle::Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray)
     }
 }
 
-void Vehicle::Detect::createContextExecution(){
+void Detect::createContextExecution(){
     this->runtime = static_cast<std::unique_ptr<nvinfer1::IRuntime, TRTDelete>>(std::move(nvinfer1::createInferRuntime(gLogger)));
     this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(vehicle_engine, vehicle_engine_len)));
     this->context = static_cast<std::unique_ptr<nvinfer1::IExecutionContext, TRTDelete>>(std::move(engine->createExecutionContext()));
@@ -73,7 +73,7 @@ void Vehicle::Detect::createContextExecution(){
     CUDA_CHECK(cudaMalloc(&buffers[outputIndex], batchSize * outputSize * sizeof(float)));       
 }
 
-std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
+std::vector<Yolo::Detection> Detect::doInference(cv::Mat &img){
     std::vector<Yolo::Detection> result{};
  
     preprocessImage(img, imgBuffer);
@@ -94,7 +94,7 @@ std::vector<Yolo::Detection> Vehicle::Detect::doInference(cv::Mat &img){
 
     return result;
 }
-float Vehicle::Detect::iou(float lbox[4], float rbox[4]){
+float Detect::iou(float lbox[4], float rbox[4]){
     float interBox[] = {
         (std::max)(lbox[0] - lbox[2] / 2.f , rbox[0] - rbox[2] / 2.f),
         (std::min)(lbox[0] + lbox[2] / 2.f , rbox[0] + rbox[2] / 2.f),
@@ -108,7 +108,7 @@ float Vehicle::Detect::iou(float lbox[4], float rbox[4]){
     float interBoxS = (interBox[1] - interBox[0])*(interBox[3] - interBox[2]);
     return interBoxS / (lbox[2] * lbox[3] + rbox[2] * rbox[3] - interBoxS);
 }
-void Vehicle::Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
+void Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
     int det_size = sizeof(Yolo::Detection) / sizeof(float);
     std::map<float, std::vector<Yolo::Detection>> m;
     for (int i = 0; i < output[0] && i < 20; i++) {
@@ -133,10 +133,10 @@ void Vehicle::Detect::nms(std::vector<Yolo::Detection>& res, float *output) cons
         }
     }
 }
-bool Vehicle::Detect::cmp(const Yolo::Detection& a, const Yolo::Detection& b) {
+bool Detect::cmp(const Yolo::Detection& a, const Yolo::Detection& b) {
     return a.conf > b.conf;
 }
-cv::Rect Vehicle::Detect::getRect(cv::Mat &img, float bbox[4]){
+cv::Rect Detect::getRect(cv::Mat &img, float bbox[4]){
     float l, r, t, b;
     float r_w = inputW / (img.cols * 1.0);
     float r_h = inputH / (img.rows * 1.0);
