@@ -32,6 +32,10 @@
     #pragma warning Unknown dynamic link import/export semantics.
 #endif
 
+#define MODEL_TYPE_VEHICLE     (0x00000000)
+#define MODEL_TYPE_PLATE       (0x00000001)
+#define MODEL_TYPE_OCR         (0x00000002)
+
 using namespace nvinfer1;
 REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
 
@@ -57,6 +61,7 @@ private:
     std::vector<void *> buffers{};
     uint8_t inputIndex{};
     uint8_t outputIndex{};
+    uint32_t modelType{};
 
     struct TRTDelete{
         template<class T>
@@ -83,6 +88,7 @@ protected:
 
 public:
     Detect();
+    Detect(uint32_t modelType);
     ~Detect();
 
     std::vector<Yolo::Detection> doInference(cv::Mat& img);
