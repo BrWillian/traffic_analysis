@@ -12,6 +12,9 @@ option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
 set(CMAKE_CXX_STANDARD 14)
 
+set(CMAKE_INSTALL_RPATH "/usr/local/tensorrt/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 execute_process(
         COMMAND git rev-parse --abbrev-ref HEAD
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -53,10 +56,23 @@ execute_process(
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
         COMMAND xxd -i vehicle.engine
-        OUTPUT_VARIABLE GEN_WEIGHTS
+        OUTPUT_VARIABLE VEHICLE_WEIGHTS
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND xxd -i plate.engine
+        OUTPUT_VARIABLE PLATE_WEIGHTS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND xxd -i ocr.engine
+        OUTPUT_VARIABLE OCR_WEIGHTS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/meta/weights.h
         ${CMAKE_CURRENT_SOURCE_DIR}/generated/weights.h
@@ -65,6 +81,15 @@ configure_file(
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
         COMMAND rm vehicle.engine
+)
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND rm plate.engine
+)
+
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND rm ocr.engine
 )
 
 find_package(CUDA 10.2 REQUIRED)
@@ -85,16 +110,16 @@ if(NOT DEFINED TENSORRT_LIBS)
     find_library(NVONNXPARSER NAMES nvonnxparser)
 endif()
 
-if(NOT DEFINED LIBCONFIG_LIBS)
-    message(WARNING "-DLIBCONFIG_LIBS não foi utilizada..")
-    find_library(LIBCONFIGCPP config++)
+if(NOT DEFINED YAMLCPP_LIBS)
+    message(WARNING "-YAMLCPP_LIBS não foi utilizada..")
+    find_library(YAMLCPP yaml-cpp)
 endif()
 
 if(NVINFER AND NVINFERPLUGIN AND NVPARSERS AND NVONNXPARSER)
     list(APPEND TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser)
 endif()
 
-message("Libraries: "${OpenCV_LIBS} ${TENSORRT_LIBS} ${LIBCONFIGCPP})
+message("Libraries: "${OpenCV_LIBS} ${TENSORRT_LIBS} ${YAMLCPP})
 
 set(OUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
@@ -104,7 +129,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUT_DIRECTORY})
 
 file(MAKE_DIRECTORY ${OUT_DIRECTORY})
 
-set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS} ${LIBCONFIGCPP})
+set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS} ${YAMLCPP})
 
 #cuda_add_library(yololayer SHARED src/yololayer.cu)
 #set_target_properties(yololayer PROPERTIES PREFIX "")
@@ -120,12 +145,14 @@ cuda_add_library(trafficanalysis SHARED
         src/detect.cpp
         src/tracker.cpp
         src/yololayer.cu
-        src/polygon.cpp
+        src/trigger.cpp
         )
 
 add_executable(debug
-        examples/cpp/debug.cpp
+        examples/cpp/example.cpp
+        # examples/cpp/debug.cpp
         #  debug/main.cpp
+        # src/wrapper.cpp
         )
 
 target_link_libraries(trafficanalysis ${LIB_DEPENDENCIES})
