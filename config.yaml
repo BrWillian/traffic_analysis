@@ -1,0 +1,8 @@
+margem: 5
+faixas:
+  - nome: faixa1
+    pt1: [10, 20]
+    pt2: [30, 40]
+  - nome: faixa2
+    pt1: [50, 60]
+    pt2: [70, 80]
