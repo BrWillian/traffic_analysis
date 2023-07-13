@@ -1,180 +1,161 @@
 #include "../include/tracker.h"
 
-using namespace std;
-
 Tracker::Tracker(int maxDisappeared)
-{
-    this->nextObjectID = 0;
-    this->maxDisappeared = maxDisappeared;
+        : nextObjectID(0), maxDisappeared(maxDisappeared) {
 }
-double Tracker::calcDistance(double x1, double y1, double x2, double y2){
-    double x = x1 - x2;
-    double y = y1 - y2;
-    double dist = std::sqrt((x * x) + (y * y));
 
-    return dist;
+double Tracker::calcIoU(const std::vector<float> &bbox1, const std::vector<float> &bbox2) {
+    float x1 = std::max(bbox1[0], bbox2[0]);
+    float y1 = std::max(bbox1[1], bbox2[1]);
+    float x2 = std::min(bbox1[0] + bbox1[2], bbox2[0] + bbox2[2]);
+    float y2 = std::min(bbox1[1] + bbox1[3], bbox2[1] + bbox2[3]);
+
+    if (x2 <= x1 || y2 <= y1)
+        return 0.0;
+
+    float intersection = (x2 - x1) * (y2 - y1);
+    float area1 = bbox1[2] * bbox1[3];
+    float area2 = bbox2[2] * bbox2[3];
+    float unionArea = area1 + area2 - intersection;
+
+    return intersection / unionArea;
 }
-void Tracker::register_Object(int cX, int cY){
-    int objID = this->nextObjectID;
-    this->objects.push_back({objID, {cX, cY}});
-    this->disappeared.insert({objID, 0});
-    this->nextObjectID += 1;
+
+void Tracker::register_Object(const std::vector<float> &bbox) {
+    int objID = nextObjectID++;
+    objects.push_back({objID, bbox});
+    disappeared[objID] = 0;
 }
-void Tracker::deleteObject(int objectID){
-    this->objects.erase(remove_if(this->objects.begin(), this->objects.end(), [objectID](auto &elem) {
+
+void Tracker::deleteObject(int objectID) {
+    objects.erase(std::remove_if(objects.begin(), objects.end(), [objectID](const auto &elem) {
         return elem.first == objectID;
-    }), this->objects.end());
+    }), objects.end());
 
-    this->disappeared.erase(objectID);
+    disappeared.erase(objectID);
 }
-std::vector<float>::size_type findMin(const std::vector<float> &v, std::vector<float>::size_type pos = 0){
-    if (v.size() <= pos) return (v.size());
-    std::vector<float>::size_type min = pos;
-    for(std::vector<float>::size_type i = pos + 1; i< v.size(); i++){
-        if(v[i] < v[min]) min = i;
-    }
-    return (min);
-}
-std::vector<std::pair<int, std::pair<int, int>>> Tracker::update(std::vector<Yolo::Detection> &dets) {
-    if (dets.empty()) {
-        auto it = this->disappeared.begin();
-        while (it != this->disappeared.end()) {
-            it->second++;
-            if (it->second > this->maxDisappeared) {
-                this->objects.erase(remove_if(this->objects.begin(), this->objects.end(), [it](auto &elem) {
-                    return elem.first == it->first;
-                }), this->objects.end());
 
-                it = this->disappeared.erase(it);
-            } else {
+std::vector<std::pair<int, std::vector<float>>> Tracker::update(std::vector<Yolo::Detection>& detections)
+{
+    if (detections.empty()) {
+        // Atualizar o contador de desaparecimento
+        for (auto& item : disappeared)
+            item.second++;
+
+        // Remover objetos que desapareceram
+        auto it = std::remove_if(objects.begin(), objects.end(), [this](const auto& elem) {
+            int objectID = elem.first;
+            return disappeared[objectID] > maxDisappeared;
+        });
+        objects.erase(it, objects.end());
+
+        // Remover objetos desaparecidos da lista de desaparecidos
+        for (auto it = disappeared.begin(); it != disappeared.end();) {
+            if (it->second > maxDisappeared)
+                it = disappeared.erase(it);
+            else
                 ++it;
-            }
         }
-        return this->objects;
+
+        return objects;
     }
 
-    vector<pair<int, int>> inputCentroids;
-    for (auto det : dets) {
-        int cX = int(det.bbox[0] + det.bbox[2] / 2.0);
-        int cY = int(det.bbox[1] + det.bbox[3] / 2.0);
-        inputCentroids.push_back(make_pair(cX, cY));
-    }
-
-    if (this->objects.empty()) {
-        for (auto i: inputCentroids) {
-            this->register_Object(i.first, i.second);
+    if (objects.empty()) {
+        for (const auto& detection : detections) {
+            std::vector<float> bbox(detection.bbox, detection.bbox + 4);
+            register_Object(bbox);
         }
-    }
-
-    else {
-        vector<int> objectIDs;
-        vector<pair<int, int>> objectCentroids;
-        for (auto object : this->objects) {
+    } else {
+        std::vector<int> objectIDs;
+        std::vector<std::vector<float>> objectBboxes;
+        for (const auto& object : objects) {
             objectIDs.push_back(object.first);
-            objectCentroids.push_back(make_pair(object.second.first, object.second.second));
+            objectBboxes.push_back(object.second);
         }
 
-        vector<vector<float>> Distances;
-        for (size_t i = 0; i < objectCentroids.size(); ++i) {
-            vector<float> temp_D;
-            for (vector<vector<int>>::size_type j = 0; j < inputCentroids.size(); ++j) {
-                double dist = calcDistance(objectCentroids[i].first, objectCentroids[i].second, inputCentroids[j].first,
-                                           inputCentroids[j].second);
-
-                temp_D.push_back(dist);
+        std::vector<std::vector<float>> iouMatrix(objectBboxes.size(), std::vector<float>(detections.size()));
+        for (size_t i = 0; i < objectBboxes.size(); ++i) {
+            for (size_t j = 0; j < detections.size(); ++j) {
+                std::vector<float> bbox(detections[j].bbox, detections[j].bbox + 4);
+                iouMatrix[i][j] = calcIoU(objectBboxes[i], bbox);
             }
-            Distances.push_back(temp_D);
         }
 
-        vector<int> cols;
-        vector<int> rows;
+        std::set<int> usedRows;
+        std::set<int> usedCols;
 
-        for (auto v: Distances) {
-            auto temp = findMin(v);
-            cols.push_back(temp);
-        }
+        while (true) {
+            // Encontrar o maior valor de IoU
+            double maxIoU = 0.0;
+            size_t maxRow = 0;
+            size_t maxCol = 0;
 
-        vector<vector<float>> D_copy;
-        for (auto v: Distances) {
-            sort(v.begin(), v.end());
-            D_copy.push_back(v);
-        }
-
-        vector<pair<float, int>> temp_rows;
-        int k = 0;
-        for (auto i: D_copy) {
-            temp_rows.push_back(make_pair(i[0], k));
-            k++;
-        }
-
-        for (auto const &x : temp_rows) {
-            rows.push_back(x.second);
-        }
-
-        set<int> usedRows;
-        set<int> usedCols;
-
-        for (size_t i = 0; i < rows.size(); i++) {
-            //if (usedRows.count(rows[i]) || usedCols.count(cols[i])) { continue; }
-            int objectID = objectIDs[rows[i]];
-            for (size_t t = 0; t < this->objects.size(); t++) {
-                double dist = calcDistance(this->objects[t].second.first, this->objects[t].second.second, inputCentroids[cols[i]].first, inputCentroids[cols[i]].second);
-                if(dist > 150) continue;
-
-                if (this->objects[t].first == objectID) {
-                    this->objects[t].second.first = inputCentroids[cols[i]].first;
-                    this->objects[t].second.second = inputCentroids[cols[i]].second;
-                }else{
-                    deleteObject(objectID);
+            for (size_t i = 0; i < iouMatrix.size(); ++i) {
+                for (size_t j = 0; j < iouMatrix[i].size(); ++j) {
+                    if (iouMatrix[i][j] > maxIoU) {
+                        maxIoU = iouMatrix[i][j];
+                        maxRow = i;
+                        maxCol = j;
+                    }
                 }
-
             }
-            this->disappeared[objectID] = 0;
 
+            // Verificar se o maior valor de IoU atende ao limiar
+            if (maxIoU < 0.25)
+                break;
 
-            usedRows.insert(rows[i]);
-            usedCols.insert(cols[i]);
+            // Verificar se a linha ou coluna já foram usadas
+            if (usedRows.count(maxRow) || usedCols.count(maxCol)) {
+                iouMatrix[maxRow][maxCol] = 0.0;
+                continue;
+            }
+
+            // Atualizar objeto existente com o novo bbox
+            int objectID = objectIDs[maxRow];
+            std::vector<float> bbox(detections[maxCol].bbox, detections[maxCol].bbox + 4);
+            objects[maxRow].second = bbox;
+            disappeared[objectID] = 0;
+
+            // Marcar a linha e coluna como usadas
+            usedRows.insert(maxRow);
+            usedCols.insert(maxCol);
+
+            // Zerar o valor de IoU para evitar duplicatas
+            iouMatrix[maxRow][maxCol] = 0.0;
         }
 
-        set<int> objRows;
-        set<int> inpCols;
+        std::set<int> objRows;
+        std::set<int> inpCols;
 
-        for (size_t i = 0; i < objectCentroids.size(); i++) {
+        for (size_t i = 0; i < objectBboxes.size(); ++i)
             objRows.insert(i);
-        }
-        for (size_t i = 0; i < inputCentroids.size(); i++) {
+        for (size_t i = 0; i < detections.size(); ++i)
             inpCols.insert(i);
+
+        std::set<int> unusedRows;
+        std::set<int> unusedCols;
+
+        std::set_difference(objRows.begin(), objRows.end(), usedRows.begin(), usedRows.end(),
+                            std::inserter(unusedRows, unusedRows.begin()));
+        std::set_difference(inpCols.begin(), inpCols.end(), usedCols.begin(), usedCols.end(),
+                            std::inserter(unusedCols, unusedCols.begin()));
+
+        // Remover objetos não correspondidos que desapareceram
+        for (const auto& row : unusedRows) {
+            int objectID = objectIDs[row];
+            disappeared[objectID] += 1;
+
+            if (disappeared[objectID] > maxDisappeared)
+                deleteObject(objectID);
         }
 
-        set<int> unusedRows;
-        set<int> unusedCols;
-
-        set_difference(objRows.begin(), objRows.end(), usedRows.begin(), usedRows.end(),
-                       inserter(unusedRows, unusedRows.begin()));
-        set_difference(inpCols.begin(), inpCols.end(), usedCols.begin(), usedCols.end(),
-                       inserter(unusedCols, unusedCols.begin()));
-
-
-        if (objectCentroids.size() >= inputCentroids.size()) {
-            for (auto row: unusedRows) {
-                int objectID = objectIDs[row];
-                this->disappeared[objectID] += 1;
-
-                if (this->disappeared[objectID] > this->maxDisappeared) {
-                    this->objects.erase(remove_if(this->objects.begin(), this->objects.end(), [objectID](auto &elem) {
-                        return elem.first == objectID;
-                    }), this->objects.end());
-
-                    this->disappeared.erase(objectID);
-                }
-            }
-        } else {
-            for (auto col: unusedCols) {
-                this->register_Object(inputCentroids[col].first, inputCentroids[col].second);
-            }
+        // Registrar novos objetos correspondentes
+        for (const auto& col : unusedCols) {
+            std::vector<float> bbox(detections[col].bbox, detections[col].bbox + 4);
+            register_Object(bbox);
         }
     }
 
-
-    return this->objects;
+    return objects;
 }
+

@@ -17,6 +17,43 @@ Detect::Detect()
 
     createContextExecution();
 }
+
+Detect::Detect(uint32_t modelType) {
+    cudaSetDevice(0);
+    this->maxInputSize = 1920*1080;
+    this->outputBlobName = "prob";
+    this->inputBlobName = "data";
+    this->confThresh = 0.4;
+    this->nmsThresh = 0.5;
+    this->batchSize = 1;
+    this->modelType = modelType;
+
+    switch(modelType){
+        case MODEL_TYPE_VEHICLE:
+            this->outputSize = 50 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+            this->inputH = 640;
+            this->inputW = 640;
+            this->numClasses = 6;
+            break;
+        case MODEL_TYPE_PLATE:
+            this->outputSize = 10 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+            this->inputH = 320;
+            this->inputW = 320;
+            this->numClasses = 1;
+            break;
+        case MODEL_TYPE_OCR:
+            this->outputSize = 100 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+            this->inputH = 320;
+            this->inputW = 320;
+            this->numClasses = 36;
+            this->confThresh = 0.1;
+            this->nmsThresh = 0.8;
+            break;
+    }
+
+    createContextExecution();
+}
+
 Detect::~Detect(){
     this->runtime.reset(nullptr);
     this->context.reset(nullptr);
@@ -58,7 +95,18 @@ void Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray) const{
 
 void Detect::createContextExecution(){
     this->runtime = static_cast<std::unique_ptr<nvinfer1::IRuntime, TRTDelete>>(std::move(nvinfer1::createInferRuntime(gLogger)));
-    this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(vehicle_engine, vehicle_engine_len)));
+
+    switch(this->modelType){
+        case MODEL_TYPE_VEHICLE:
+            this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(vehicle_engine, vehicle_engine_len)));
+            break;
+        case MODEL_TYPE_PLATE:
+            this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(plate_engine, plate_engine_len)));
+            break;
+        case MODEL_TYPE_OCR:
+            this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(ocr_engine, ocr_engine_len)));
+            break;
+    }
     this->context = static_cast<std::unique_ptr<nvinfer1::IExecutionContext, TRTDelete>>(std::move(engine->createExecutionContext()));
 
     this->imgBuffer = new float[batchSize * 3 * inputH * inputW];

@@ -2,27 +2,65 @@
 #include "../meta/wrapper.h"
 #include "../include/detect.h"
 #include "../include/tracker.h"
-#include "../include/polygon.h"
 #include "../generated/version.h"
-#include <libconfig.h++>
+#include "../include/trigger.h"
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
+
+
+std::pair<float, std::vector<std::pair<cv::Point, cv::Point>>> CDECL parseConfig(){
+    std::ifstream file("config.yaml");
+    if (!file) {
+        std::cerr << "Erro ao abrir o arquivo de configuração." << std::endl;
+        exit(1);
+    }
+    YAML::Node root = YAML::Load(file);
+
+    int margem;
+    std::vector<std::pair<cv::Point, cv::Point>> lines;
+
+    margem = root["margem"].as<int>();
+
+    YAML::Node faixas = root["faixas"];
+    for (const auto& faixa : faixas) {
+        std::string nome = faixa["nome"].as<std::string>();
+
+        YAML::Node pt1 = faixa["pt1"];
+        YAML::Node pt2 = faixa["pt2"];
+
+        cv::Point pt1_xy(pt1[0].as<int>(), pt1[1].as<int>());
+        cv::Point pt2_xy(pt2[0].as<int>(), pt2[1].as<int>());
+        lines.emplace_back(pt1_xy, pt2_xy);
+
+        std::cout << "Faixa: " << nome << std::endl;
+        std::cout << "Ponto 1: (" << pt1[0].as<int>() << ", " << pt1[1].as<int>() << ")" << std::endl;
+        std::cout << "Ponto 2: (" << pt2[0].as<int>() << ", " << pt2[1].as<int>() << ")" << std::endl;
+        std::cout << std::endl;
+    }
+
+    return std::make_pair(margem, lines);
+};
 
 
 vehicle_t* CDECL C_vehicleDetect(){
     vehicle_t* objwrapper;
 
-    Detect *vh = new Detect();
+    Detect *vehicle_detect = new Detect(MODEL_TYPE_VEHICLE);
+    Detect *plate_detect = new Detect(MODEL_TYPE_PLATE);
+    Detect *ocr_detect = new Detect(MODEL_TYPE_OCR);
     Tracker *tracker = new Tracker(0);
 
-    std::vector<std::vector<cv::Point>> polygons = getPolygons();//{{cv::Point(60, 340), cv::Point(1115, 335), cv::Point(1270, 610), cv::Point(0, 640)}};
+    std::pair<float, std::vector<std::pair<cv::Point, cv::Point>>> config = parseConfig();
 
-    Polygon *checkArea = new Polygon(polygons);
+    Trigger::Lines = config.second;
+    Trigger::Margin = config.first;
 
-    objwrapper = (typeof(objwrapper)) malloc(sizeof(*objwrapper));
+    objwrapper = (__typeof__(objwrapper)) malloc(sizeof(*objwrapper));
 
-    objwrapper->detectObj = vh;
-    objwrapper->trackerObj = tracker;
-    objwrapper->areaCheck = checkArea;
+    objwrapper->vehicle_detect = vehicle_detect;
+    objwrapper->plate_detect = plate_detect;
+    objwrapper->ocr_detect = ocr_detect;
+    objwrapper->obj_tracker = tracker;
 
     return objwrapper;
 }
@@ -31,29 +69,30 @@ void CDECL C_vehicleDetectDestroy(vehicle_t* vh){
     if(vh == nullptr){
         std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
     }
-    delete static_cast<Detect*>(vh->detectObj);
-    delete static_cast<Tracker*>(vh->trackerObj);
-    delete static_cast<Polygon*>(vh->areaCheck);
+    delete static_cast<Detect*>(vh->vehicle_detect);
+    delete static_cast<Detect*>(vh->plate_detect);
+    delete static_cast<Detect*>(vh->ocr_detect);
+    delete static_cast<Tracker*>(vh->obj_tracker);
     free(vh);
 }
 
-std::string Serialize(std::vector<Detection> &res){
+std::string Serialize(const std::vector<Detection>& res) {
     std::stringstream ss;
     ss << "{\"detections\": [";
-    for(auto vh = res.begin(); vh!=res.end();)
-    {
-        ss << "{\"id\":"<<vh->obj_id;
-        ss << ",\"classe\":\""<<vh->class_name;
-        ss << "\",\"centroid\":{\"x\":"<<vh->centroid.x;
-        ss << ",\"y\":"<<vh->centroid.y<<"}";
-        ss << ",\"x\":"<<vh->bbox[0];
-        ss << ",\"y\":"<<vh->bbox[1];
-        ss << ",\"w\":"<<vh->bbox[2];
-        ss << ",\"h\":"<<vh->bbox[3];
-        if(++vh == res.end()){
-           ss<<"}";
-        }else {
-           ss<<"},";
+    for (auto vh = res.begin(); vh != res.end();) {
+        ss << "{\"id\":" << vh->obj_id;
+        ss << ",\"placa\":\"" << vh->plate;
+        ss << "\",\"classe\":\"" << vh->class_name;
+        ss << "\",\"centroid\":{\"x\":" << vh->centroid.x;
+        ss << ",\"y\":" << vh->centroid.y << "}";
+        ss << ",\"x\":" << vh->bbox[0];
+        ss << ",\"y\":" << vh->bbox[1];
+        ss << ",\"w\":" << vh->bbox[2];
+        ss << ",\"h\":" << vh->bbox[3];
+        if (++vh == res.end()) {
+            ss << "}";
+        } else {
+            ss << "},";
         }
     }
     ss << "]";
@@ -62,71 +101,48 @@ std::string Serialize(std::vector<Detection> &res){
     return ss.str();
 }
 const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSize){
-//    if(vh == nullptr){
-//        std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
-//    }
-    Detect *det;
-    Tracker *tracker;
-    Polygon *checkArea;
+    if (vh == nullptr) {
+        std::cerr << "[ERROR] Received invalid pointer" << std::endl;
+    }
 
-    det = static_cast<Detect*>(vh->detectObj);
-    tracker = static_cast<Tracker*>(vh->trackerObj);
-    checkArea = static_cast<Polygon*>(vh->areaCheck);
-
-
-//    int h = 960;
-//    int w = 1280;
-//    int slice_size = 1280*960; // w*h
-
-//    cv::Mat R(h,w,CV_8U, imgData);
-//    cv::Mat G(h,w,CV_8U, imgData+slice_size);
-//    cv::Mat B(h,w,CV_8U, imgData+(2*slice_size));
-
-//    cv::Mat chan[] {B,G,R}; // BGR order for opencv !
-//    cv::Mat final;
-//    cv::merge(chan, 3, final);
-
-//    unsigned char *img_data_ptr = (unsigned char*) &imgData;
-
-//    std::vector<uchar> data(imgData, imgData + imgSize);
-    //memcpy(vh->imgBuffer.data, imgData, 1280*960*3*sizeof(uchar));
-
-
-//    cv::imshow("",final);
-//    cv::waitKey(0);
-
-
-    //cv::imwrite("img.jpg", img);
+    Detect* vehicle_detect = static_cast<Detect*>(vh->vehicle_detect);
+    Detect* plate_detect = static_cast<Detect*>(vh->plate_detect);
+    Detect* ocr_detect = static_cast<Detect*>(vh->ocr_detect);
+    Tracker* tracker = static_cast<Tracker*>(vh->obj_tracker);
 
     std::vector<uchar> data(imgData, imgData + imgSize);
-//    memcpy(vh->imgBuffer.data, imgData, 1280*960*3*sizeof(uchar));
     cv::Mat img = cv::imdecode(cv::Mat(data), -1);
-//    cv::imwrite("img.jpg", img);
-//    vh->imgBuffer.reshape(3, 1280);
-//    cv::imwrite("img.jpg", vh->imgBuffer);
 
-
-    auto detects = det->doInference(img);
-
-    checkArea->checkAreaBoxes(detects);
-
-    auto objects = tracker->update(detects);
+    if (img.empty()) {
+        std::cerr << "[ERROR] Failed to decode image" << std::endl;
+        return strdup(Serialize({}).c_str());
+    }
 
     std::vector<Detection> res;
 
-    for(size_t i = 0; i<objects.size(); i++)
-    {
-        Detection det_t;
-        det_t.bbox[0] = detects[i].bbox[0];
-        det_t.bbox[1] = detects[i].bbox[1];
-        det_t.bbox[2] = detects[i].bbox[2]+detects[i].bbox[0];
-        det_t.bbox[3] = detects[i].bbox[3]+detects[i].bbox[1];
-        det_t.class_name = classes[(int)detects[i].class_id];
-        det_t.conf = detects[i].conf;
-        det_t.obj_id = objects[i].first;
-        det_t.centroid.x = objects[i].second.first;
-        det_t.centroid.y = objects[i].second.second;
-        res.push_back(det_t);
+    try {
+        auto vehicles = Trigger::getVehicles(*vehicle_detect, img);
+        auto trigged = Trigger::checkLinePassage(vehicles);
+        auto plates = Trigger::getplateOcr(*plate_detect, *ocr_detect, trigged, vehicles, img);
+        auto objects = tracker->update(vehicles);
+
+        for (size_t i = 0; i < vehicles.size(); i++) {
+            Detection det_t;
+            det_t.bbox[0] = vehicles[i].bbox[0];
+            det_t.bbox[1] = vehicles[i].bbox[1];
+            det_t.bbox[2] = vehicles[i].bbox[2] + vehicles[i].bbox[0];
+            det_t.bbox[3] = vehicles[i].bbox[3] + vehicles[i].bbox[1];
+            det_t.centroid.x = (vehicles[i].bbox[0] + vehicles[i].bbox[2] + vehicles[i].bbox[0]) / 2;
+            det_t.centroid.y = (vehicles[i].bbox[1] + vehicles[i].bbox[3] + vehicles[i].bbox[1]) / 2;
+            det_t.class_name = classes[(int)vehicles[i].class_id];
+            det_t.conf = vehicles[i].conf;
+            det_t.obj_id = objects[i].first;
+            det_t.plate = plates[i].c_str();
+            res.push_back(det_t);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] Exception: " << e.what() << std::endl;
+        return strdup(Serialize({}).c_str());
     }
 
     return strdup(Serialize(res).c_str());
@@ -139,93 +155,46 @@ const char* CDECL C_getWVersion(){
 }
 
 std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
-    if(vh == nullptr){
-        std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
+    if (vh == nullptr) {
+        std::cerr << "[ERROR] Received invalid pointer" << std::endl;
     }
-    Detect *det;
-    Tracker *tracker;
-    Polygon *checkArea;
 
-    det = static_cast<Detect*>(vh->detectObj);
-    tracker = static_cast<Tracker*>(vh->trackerObj);
-    checkArea = static_cast<Polygon*>(vh->areaCheck);
+    Detect* vehicle_detect = static_cast<Detect*>(vh->vehicle_detect);
+    Detect* plate_detect = static_cast<Detect*>(vh->plate_detect);
+    Detect* ocr_detect = static_cast<Detect*>(vh->ocr_detect);
+    Tracker* tracker = static_cast<Tracker*>(vh->obj_tracker);
 
-    std::vector<Yolo::Detection> detects = det->doInference(img);
-
-    std::vector<Yolo::Detection> detects_inside = checkArea->checkAreaBoxes(detects);
-
-    std::vector<std::pair<int, std::pair<int, int>>> objects = tracker->update(detects_inside);
+    if (img.empty()) {
+        std::cerr << "[ERROR] Failed to decode image" << std::endl;
+        return strdup(Serialize({}).c_str());
+    }
 
     std::vector<Detection> res;
 
-    for(size_t i = 0; i<objects.size(); i++)
-    {
-        Detection det_t;
-        det_t.bbox[0] = detects[i].bbox[0];
-        det_t.bbox[1] = detects[i].bbox[1];
-        det_t.bbox[2] = detects[i].bbox[2];//+detects[i].bbox[0];
-        det_t.bbox[3] = detects[i].bbox[3];//+detects[i].bbox[1];
-        det_t.class_name = classes[(int)detects[i].class_id];
-        det_t.conf = detects[i].conf;
-        det_t.obj_id = objects[i].first;
-        det_t.centroid.x = objects[i].second.first;
-        det_t.centroid.y = objects[i].second.second;
-        res.push_back(det_t);
-    }
-
-    return Serialize(res);
-}
-std::vector<std::vector<cv::Point>> getPolygons() {
-    libconfig::Config cfg;
-    const char* cfg_file = "config.cfg";
     try {
-        cfg.readFile(cfg_file);
-    }catch(const libconfig::FileIOException &fioex)
-    {
-        std::cerr << "I/O error while reading file." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    catch(const libconfig::ParseException &pex)
-    {
-        std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
-                  << " - " << pex.getError() << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    const libconfig::Setting& root = cfg.getRoot();
-    const libconfig::Setting &polys = root["polygons"];
-    std::vector<std::vector<int>> global_cords;
-    for (int i = 0; i < polys.getLength(); ++i) {
-        const libconfig::Setting &poly = polys[i];
-        std::vector<int> cords;
-        for(int j=0; j<poly.getLength(); ++j){
-            const libconfig::Setting &point = poly[i];
+        auto vehicles = Trigger::getVehicles(*vehicle_detect, img);
+        auto trigged = Trigger::checkLinePassage(vehicles);
+        auto plates = Trigger::getplateOcr(*plate_detect, *ocr_detect, trigged, vehicles, img);
+        auto objects = tracker->update(vehicles);
 
-            for(int k=0; k<point.getLength(); k++)
-            {
-                const libconfig::Setting &cord = poly[j];
-                cords.push_back(cord[k]);
-            }
+        for (size_t i = 0; i < vehicles.size(); i++) {
+            Detection det_t;
+            det_t.bbox[0] = vehicles[i].bbox[0];
+            det_t.bbox[1] = vehicles[i].bbox[1];
+            det_t.bbox[2] = vehicles[i].bbox[2] + vehicles[i].bbox[0];
+            det_t.bbox[3] = vehicles[i].bbox[3] + vehicles[i].bbox[1];
+            det_t.centroid.x = (vehicles[i].bbox[0] + vehicles[i].bbox[2] + vehicles[i].bbox[0]) / 2;
+            det_t.centroid.y = (vehicles[i].bbox[1] + vehicles[i].bbox[3] + vehicles[i].bbox[1]) / 2;
+            det_t.class_name = classes[(int)vehicles[i].class_id];
+            det_t.conf = vehicles[i].conf;
+            det_t.obj_id = objects[i].first;
+            det_t.plate = plates[i].c_str();
+            res.push_back(det_t);
         }
-        global_cords.push_back(cords);
-    }
-    std::vector<std::vector<cv::Point>> polygons;
-
-    for(auto & global_cord : global_cords)
-    {
-        std::vector<cv::Point> points;
-        for(int j=0; j<global_cord.size()-1; j++){
-            int k = j++;
-            points.emplace_back(global_cord[k], global_cord[j]);
-        }
-        polygons.push_back(points);
-    }
-    int conta = 0;
-    for(auto& it: polygons){
-        std::cout<<"Added polygon: "<<++conta<<std::endl;
-        for(auto &poly: it){
-            std::cout<<"X: "<<poly.x<<" Y: "<<poly.y<<std::endl;
-        }
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] Exception: " << e.what() << std::endl;
+        return strdup(Serialize({}).c_str());
     }
 
-    return polygons;
+    return strdup(Serialize(res).c_str());
 }
