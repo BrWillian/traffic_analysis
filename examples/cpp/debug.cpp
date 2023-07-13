@@ -6,18 +6,32 @@
 
 #if USE_WRAPPER == 0
     #include "../../include/tracker.h"
+    #include "../../include/trigger.h"
     #include "../../include/detect.h"
-    #include "../../include/polygon.h"
+    #include "../../include/yololayer.h"
 #else
     #include "../meta/wrapper.h"
 #endif
+
+inline const char * const BoolToString(bool b)
+{
+    return b ? " true" : " false";
+}
 
 
 int main(int argc, char *argv[])
 {
 #if USE_WRAPPER == 0
-    auto *vh = new Detect();
+    auto *vh = new Detect(MODEL_TYPE_VEHICLE);
+    auto *pd = new Detect(MODEL_TYPE_PLATE);
+    auto *od = new Detect(MODEL_TYPE_OCR);
     auto *tracker = new Tracker(0);
+
+    Trigger::Margin = 30;
+    Trigger::Lines = {
+            std::make_pair(cv::Point(40, 350), cv::Point(530, 340)),
+            std::make_pair(cv::Point(590, 340), cv::Point(1100, 350)),
+    };
 #else
     vehicle_t *vh = C_vehicleDetect();
 #endif
@@ -61,51 +75,73 @@ int main(int argc, char *argv[])
 
     const std::string classes[] = {"carro", "moto", "onibus", "caminhao", "van", "caminhonete"};
 
-    std::vector<std::vector<cv::Point>> polygons{
-        {cv::Point(43, 403), cv::Point(529, 393), cv::Point(583, 624), cv::Point(2, 639)},
-        {cv::Point(594, 510), cv::Point(655, 744), cv::Point(1275, 717), cv::Point(1187, 492)}
-                                                };
+
+    std::vector<std::pair<cv::Point, cv::Point>> lines{
+        std::make_pair(cv::Point(40, 350), cv::Point(530, 340)),
+        std::make_pair(cv::Point(590, 340), cv::Point(1100, 350)),
+    };
 
 //    std::vector<std::vector<cv::Point>> polygons = getPolygons();
 
 #if USE_WRAPPER == 0
     //cv::VideoWriter video("outcpp.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(960,720));
-    auto *checkArea = new Polygon(polygons);
 
-    while(true){
+    while(true) {
 
         cap >> frame;
+        cv::Mat copy_frame = frame.clone();
 
-        if(frame.empty()){
+        if (frame.empty()) {
             break;
         }
 
+
         auto start = std::chrono::high_resolution_clock::now();
+        try {
+            std::vector<Yolo::Detection> vehicles = Trigger::getVehicles(*vh, copy_frame);
 
-        auto res = vh->doInference(frame);
+            std::vector<bool> trigged = Trigger::checkLinePassage(vehicles);
 
-        cv::Mat layer = cv::Mat::zeros(frame.size(), CV_8UC3);
+            std::vector<std::string> results = Trigger::getplateOcr(*pd, *od, trigged, vehicles, copy_frame);
 
-        cv::fillPoly(layer, polygons, cv::Scalar(0, 0, 255));
-        cv::addWeighted(frame, 1.0, layer, 0.3, 0, frame);
+            auto objects = tracker->update(vehicles);
 
 
-        for(auto &it: res){
-            cv::rectangle(frame, cv::Point(it.bbox[0], it.bbox[1]), cv::Point(it.bbox[2]+it.bbox[0], it.bbox[3]+it.bbox[1]), cv::Scalar(0, 255, 0), 1);
-            cv::putText(frame, classes[(int)it.class_id], cv::Point(it.bbox[0], it.bbox[1]), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
-        }
 
-        checkArea->checkAreaBoxes(res);
+            cv::line(frame, cv::Point(40, 350), cv::Point(530, 340), cv::Scalar(0, 255, 0));
+            cv::line(frame, cv::Point(590, 340), cv::Point(1080, 350), cv::Scalar(0, 255, 0));
 
-        auto objects = tracker->update(res);
 
-        for(size_t i = 0; i<objects.size(); i++)
-        {
-//            cv::putText(frame, classes[(int)res[i].class_id], cv::Point(res[i].bbox[0], res[i].bbox[1]), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
-//            cv::rectangle(frame, cv::Point(res[i].bbox[0], res[i].bbox[1]), cv::Point(res[i].bbox[2]+res[i].bbox[0], res[i].bbox[3]+res[i].bbox[1]), cv::Scalar(0, 255, 0), 1);
-            cv::circle(frame, cv::Point(objects[i].second.first, objects[i].second.second), 5, cv::Scalar(0, 0, 255), -1);
-            cv::putText(frame, std::to_string(objects[i].first), cv::Point(objects[i].second.first - 10, objects[i].second.second - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
-        }
+            for (size_t i = 0; i < vehicles.size(); i++) {
+                cv::putText(frame, classes[(int) vehicles[i].class_id],
+                            cv::Point(vehicles[i].bbox[0], vehicles[i].bbox[1]), cv::FONT_HERSHEY_DUPLEX, 1,
+                            cv::Scalar(0, 255, 0));
+                cv::rectangle(frame, cv::Point(vehicles[i].bbox[0], vehicles[i].bbox[1]),
+                              cv::Point(vehicles[i].bbox[2] + vehicles[i].bbox[0],
+                                        vehicles[i].bbox[3] + vehicles[i].bbox[1]), cv::Scalar(0, 255, 0), 1);
+                cv::circle(frame, cv::Point((vehicles[i].bbox[0] + vehicles[i].bbox[2] + vehicles[i].bbox[0]) / 2,
+                                            (vehicles[i].bbox[1] + vehicles[i].bbox[3] + vehicles[i].bbox[1]) / 2), 5,
+                           cv::Scalar(0, 0, 255), -1);
+                cv::putText(frame, std::to_string(objects[i].first),
+                            cv::Point((vehicles[i].bbox[0] + vehicles[i].bbox[2] + vehicles[i].bbox[0]) / 2,
+                                      (vehicles[i].bbox[1] + vehicles[i].bbox[3] + vehicles[i].bbox[1]) / 2),
+                            cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
+                std::cout << "ID: " + std::to_string(objects[i].first) << std::endl;
+
+                cv::Rect roi(vehicles[i].bbox[0], vehicles[i].bbox[1], vehicles[i].bbox[2], vehicles[i].bbox[3]);
+                cv::Mat image_roi = copy_frame(roi);
+                auto plates = pd->doInference(image_roi);
+                for (auto &plate: plates) {
+                    cv::rectangle(image_roi, cv::Point(plate.bbox[0], plate.bbox[1]),
+                                  cv::Point(plate.bbox[2] + plate.bbox[0], plate.bbox[3] + plate.bbox[1]),
+                                  cv::Scalar(0, 0, 255), 1);
+                }
+
+
+                cv::imshow(results[i] + " ID: " + std::to_string(objects[i].first), image_roi);
+                cv::waitKey(0);
+            }
+
 
 //        for(auto &it: objects){
 //            cv::circle(frame, cv::Point(it.second.first, it.second.second), 5, cv::Scalar(0, 0, 255), -1);
@@ -113,27 +149,31 @@ int main(int argc, char *argv[])
 //            cv::putText(frame, ID, cv::Point(it.second.first - 10, it.second.second - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
 //        }
 
-       // std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            // std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 
 
 
-        cv::imshow("name", frame);
+            cv::imshow("name", frame);
 
-        char c=(char)cv::waitKey(50);
-            if(c==27)
-              break;
+            char c = (char) cv::waitKey(90);
+            if (c == 27)
+                break;
 
-        cv::resize(frame, frame, cv::Size(960,720));
+        } catch (...){
+            continue;
+        }
+
+        //cv::resize(frame, frame, cv::Size(960,720));
         //video.write(frame);
         auto end = std::chrono::high_resolution_clock::now();
 
 
-        //auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
         //std::cout << "Inferência: " << " FPS: " << 1000.0 / (static_cast<double>(time.count())) << std::endl;
 
-        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+        //std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 
     }
 
