@@ -23,9 +23,10 @@
 extern "C" {
 #endif
     struct VehicleDetect{
-        void *detectObj;
-        void *trackerObj;
-        void *areaCheck;
+        void *vehicle_detect;
+        void *plate_detect;
+        void *ocr_detect;
+        void *obj_tracker;
     };
 
     typedef struct VehicleDetect vehicle_t;
@@ -42,6 +43,7 @@ extern "C" {
         Point centroid;
         float conf;
         int obj_id;
+        const char* plate;
     };
 
     VEHICLEDETECT_API vehicle_t* C_vehicleDetect();
