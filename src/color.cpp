@@ -26,3 +26,29 @@ std::vector<std::string> ColorDetector::detectSpecificColor(const std::vector<Yo
     return colors;
 }
 
+cv::Scalar ColorDetector::extractDominantColor(const cv::Mat& img) {
+    cv::Mat hsvImage;
+    cv::cvtColor(img, hsvImage, cv::COLOR_BGR2HSV);
+
+    int hbins = 180;
+    int histSize[] = { hbins };
+    float hranges[] = { 0, 180 };
+    const float* ranges[] = { hranges };
+    cv::MatND hist;
+    int channels[] = { 0 };
+    cv::calcHist(&hsvImage, 1, channels, cv::Mat(), hist, 1, histSize, ranges, true, false);
+
+    double maxVal = 0;
+    int maxIdx = 0;
+    for (int i = 0; i < hbins; i++) {
+        float binVal = hist.at<float>(i);
+        if (binVal > maxVal) {
+            maxVal = binVal;
+            maxIdx = i;
+        }
+    }
+
+    float hue = (maxIdx * 180) / hbins;
+
+    return cv::Scalar(hue, 255, 255);
+}
