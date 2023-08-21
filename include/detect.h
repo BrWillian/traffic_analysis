@@ -3,6 +3,8 @@
 
 #include <chrono>
 #include <iostream>
+#include <numeric>
+#include <cmath>
 #include <NvInfer.h>
 #include <cuda_runtime_api.h>
 #include <opencv2/opencv.hpp>
@@ -18,6 +20,7 @@
 #include <vector>
 #include "utils.h"
 #include <assert.h>
+#include "../generated/weights.h"
 
 #if defined(__GNUC__)
 //  GCC
@@ -35,6 +38,7 @@
 #define MODEL_TYPE_VEHICLE     (0x00000000)
 #define MODEL_TYPE_PLATE       (0x00000001)
 #define MODEL_TYPE_OCR         (0x00000002)
+#define MODEL_TYPE_COLOR       (0x00000003)
 
 using namespace nvinfer1;
 REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
@@ -80,11 +84,19 @@ private:
 
 protected:
     void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
+    void preprocessImageCls(const cv::Mat& img, float* imgBufferArray) const;
+    void createContextExecution();
+
+    // OBJECT DETECTION METHODS
     static float iou(float lbox[4], float rbox[4]);
     void nms(std::vector<Yolo::Detection>& res, float *output) const;
     static bool cmp(const Yolo::Detection& a, const Yolo::Detection& b);
     cv::Rect getRect(cv::Mat& img, float bbox[4]);
-    void createContextExecution();
+
+    // CLASSIFICATION METHODS
+    static std::vector<float> softmax(float *output_buffer, int n);
+    static int getClasse(std::vector<float> &res, int n);
+    static std::vector<int> topk(const std::vector<float>& vec, int k);
 
 public:
     Detect();
@@ -92,7 +104,7 @@ public:
     ~Detect();
 
     std::vector<Yolo::Detection> doInference(cv::Mat& img);
-
+    int doInferenceCls(cv::Mat& img);
 };
 
 
