@@ -26,12 +26,11 @@ extern "C" {
         void *vehicle_detect;
         void *plate_detect;
         void *ocr_detect;
+        void *color_infer;
         void *obj_tracker;
     };
 
     typedef struct VehicleDetect vehicle_t;
-
-    const char* classes[] = {"carro", "moto", "onibus", "caminhao", "van", "caminhonete"};
 
     typedef struct Point{
         int x, y;
@@ -44,6 +43,7 @@ extern "C" {
         float conf;
         int obj_id;
         const char* plate;
+        const char* color;
     };
 
     VEHICLEDETECT_API vehicle_t* C_vehicleDetect();
@@ -62,7 +62,6 @@ extern "C" {
 
 #ifdef __cplusplus
     VEHICLEDETECT_API std::string doInference(vehicle_t* vh, cv::Mat& img);
-    VEHICLEDETECT_API std::vector<std::vector<cv::Point>> getPolygons();
 #endif
 
 #endif // WRAPPER_H

@@ -1,4 +1,5 @@
 #include <string>
+#include <future>
 #include "../meta/wrapper.h"
 #include "../include/detect.h"
 #include "../include/tracker.h"
@@ -48,6 +49,7 @@ vehicle_t* CDECL C_vehicleDetect(){
     Detect *vehicle_detect = new Detect(MODEL_TYPE_VEHICLE);
     Detect *plate_detect = new Detect(MODEL_TYPE_PLATE);
     Detect *ocr_detect = new Detect(MODEL_TYPE_OCR);
+    Detect *color_infer = new Detect(MODEL_TYPE_COLOR);
     Tracker *tracker = new Tracker(0);
 
     std::pair<float, std::vector<std::pair<cv::Point, cv::Point>>> config = parseConfig();
@@ -60,6 +62,7 @@ vehicle_t* CDECL C_vehicleDetect(){
     objwrapper->vehicle_detect = vehicle_detect;
     objwrapper->plate_detect = plate_detect;
     objwrapper->ocr_detect = ocr_detect;
+    objwrapper->color_infer = color_infer;
     objwrapper->obj_tracker = tracker;
 
     return objwrapper;
@@ -82,6 +85,7 @@ std::string Serialize(const std::vector<Detection>& res) {
     for (auto vh = res.begin(); vh != res.end();) {
         ss << "{\"id\":" << vh->obj_id;
         ss << ",\"placa\":\"" << vh->plate;
+        ss << "\",\"cor\":\"" << vh->color;
         ss << "\",\"classe\":\"" << vh->class_name;
         ss << "\",\"centroid\":{\"x\":" << vh->centroid.x;
         ss << ",\"y\":" << vh->centroid.y << "}";
@@ -108,6 +112,7 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
     Detect* vehicle_detect = static_cast<Detect*>(vh->vehicle_detect);
     Detect* plate_detect = static_cast<Detect*>(vh->plate_detect);
     Detect* ocr_detect = static_cast<Detect*>(vh->ocr_detect);
+    Detect* color_infer = static_cast<Detect*>(vh->color_infer);
     Tracker* tracker = static_cast<Tracker*>(vh->obj_tracker);
 
     std::vector<uchar> data(imgData, imgData + imgSize);
@@ -123,7 +128,19 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
     try {
         auto vehicles = Trigger::getVehicles(*vehicle_detect, img);
         auto trigged = Trigger::checkLinePassage(vehicles);
-        auto plates = Trigger::getplateOcr(*plate_detect, *ocr_detect, trigged, vehicles, img);
+        Trigger::filterObjects(vehicles, trigged);
+
+        std::future<std::vector<std::string>> colors_future = std::async(std::launch::async, [&]() {
+            return Trigger::getColors(*color_infer, vehicles, img);
+        });
+
+        std::future<std::vector<std::string>> ocr_future = std::async(std::launch::async, [&]() {
+            return Trigger::getplateOcr(*plate_detect, *ocr_detect, vehicles, img);
+        });
+
+        auto colors = colors_future.get();
+        auto plates = ocr_future.get();
+
         auto objects = tracker->update(vehicles);
 
         for (size_t i = 0; i < vehicles.size(); i++) {
@@ -134,10 +151,11 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
             det_t.bbox[3] = vehicles[i].bbox[3] + vehicles[i].bbox[1];
             det_t.centroid.x = (vehicles[i].bbox[0] + vehicles[i].bbox[2] + vehicles[i].bbox[0]) / 2;
             det_t.centroid.y = (vehicles[i].bbox[1] + vehicles[i].bbox[3] + vehicles[i].bbox[1]) / 2;
-            det_t.class_name = classes[(int)vehicles[i].class_id];
+            det_t.class_name = Trigger::vehicle_classes[(int)vehicles[i].class_id].c_str();
             det_t.conf = vehicles[i].conf;
             det_t.obj_id = objects[i].first;
             det_t.plate = plates[i].c_str();
+            det_t.color = colors[i].c_str();
             res.push_back(det_t);
         }
     } catch (const std::exception& e) {
@@ -162,6 +180,7 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
     Detect* vehicle_detect = static_cast<Detect*>(vh->vehicle_detect);
     Detect* plate_detect = static_cast<Detect*>(vh->plate_detect);
     Detect* ocr_detect = static_cast<Detect*>(vh->ocr_detect);
+    Detect* color_infer = static_cast<Detect*>(vh->color_infer);
     Tracker* tracker = static_cast<Tracker*>(vh->obj_tracker);
 
     if (img.empty()) {
@@ -174,7 +193,19 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
     try {
         auto vehicles = Trigger::getVehicles(*vehicle_detect, img);
         auto trigged = Trigger::checkLinePassage(vehicles);
-        auto plates = Trigger::getplateOcr(*plate_detect, *ocr_detect, trigged, vehicles, img);
+        Trigger::filterObjects(vehicles, trigged);
+
+        std::future<std::vector<std::string>> colors_future = std::async(std::launch::async, [&]() {
+            return Trigger::getColors(*color_infer, vehicles, img);
+        });
+
+        std::future<std::vector<std::string>> ocr_future = std::async(std::launch::async, [&]() {
+            return Trigger::getplateOcr(*plate_detect, *ocr_detect, vehicles, img);
+        });
+
+        auto colors = colors_future.get();
+        auto plates = ocr_future.get();
+
         auto objects = tracker->update(vehicles);
 
         for (size_t i = 0; i < vehicles.size(); i++) {
@@ -189,6 +220,7 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
             det_t.conf = vehicles[i].conf;
             det_t.obj_id = objects[i].first;
             det_t.plate = plates[i].c_str();
+            det_t.color = colors[i].c_str();
             res.push_back(det_t);
         }
     } catch (const std::exception& e) {
