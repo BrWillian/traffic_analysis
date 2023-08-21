@@ -50,13 +50,8 @@ std::vector<Yolo::Detection> Trigger::getVehicles(Detect &det, cv::Mat &frame) {
     return det.doInference(frame);
 }
 
-std::vector<std::string> Trigger::getplateOcr(Detect &plateDet, Detect &ocrDet, std::vector<bool>& trigged, std::vector<Yolo::Detection>& vehicles, cv::Mat &frame) {
+std::vector<std::string> Trigger::getplateOcr(Detect &plateDet, Detect &ocrDet, std::vector<Yolo::Detection>& vehicles, cv::Mat &frame) {
     platesOcr.clear();
-
-    vehicles.erase(std::remove_if(vehicles.begin(), vehicles.end(), [&](const Yolo::Detection& vehicle) {
-        size_t i = &vehicle - &vehicles[0];
-        return !trigged[i];
-    }), vehicles.end());
 
     for(auto & vehicle : vehicles){
         cv::Rect r(vehicle.bbox[0], vehicle.bbox[1], vehicle.bbox[2], vehicle.bbox[3]);
@@ -79,9 +74,6 @@ std::string Trigger::getOcr(Detect& ocrDet, std::vector<Yolo::Detection> &plates
     if (plates.size() == 0) {
         return "";
     }
-
-    const char* classes[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"};
-
     for (size_t i = 0; i < plates.size(); i++) {
         std::string newPlate = "";
         cv::Rect r(plates[i].bbox[0], plates[i].bbox[1], plates[i].bbox[2], plates[i].bbox[3]);
@@ -131,7 +123,7 @@ std::string Trigger::getOcr(Detect& ocrDet, std::vector<Yolo::Detection> &plates
         }
 
         for (size_t j = 0; j < plateTmp.size(); j++) {
-            newPlate += classes[(int)plateTmp[j].class_id];
+            newPlate += ocr_classes[(int)plateTmp[j].class_id];
         }
         return newPlate;
     }
@@ -140,15 +132,15 @@ std::string Trigger::getOcr(Detect& ocrDet, std::vector<Yolo::Detection> &plates
 }
 
 
-//void Trigger::deleteFalseDetections(std::vector<Yolo::Detection>& detections, std::vector<bool>& indicesToRemove) {
-//    auto removeBegin = std::remove_if(detections.begin(), detections.end(), [&](const Yolo::Detection& detection) {
-//        std::size_t index = &detection - &detections[0];
-//        return !indicesToRemove[index];
-//    });
-//
-//    detections.erase(removeBegin, detections.end());
-//    indicesToRemove.erase(indicesToRemove.begin() + (removeBegin - detections.begin()), indicesToRemove.end());
-//}
+void Trigger::filterObjects(std::vector<Yolo::Detection>& detections, std::vector<bool>& indicesToRemove) {
+    auto removeBegin = std::remove_if(detections.begin(), detections.end(), [&](const Yolo::Detection& detection) {
+        std::size_t index = &detection - &detections[0];
+        return !indicesToRemove[index];
+    });
+
+    detections.erase(removeBegin, detections.end());
+    indicesToRemove.erase(indicesToRemove.begin() + (removeBegin - detections.begin()), indicesToRemove.end());
+}
 
 bool Trigger::compareByLength(const Yolo::Detection &a, const Yolo::Detection &b) {
     return a.bbox[0] < b.bbox[0];
@@ -162,8 +154,23 @@ bool Trigger::compareByHeight(const Yolo::Detection &a, const Yolo::Detection &b
     return a.bbox[1] < b.bbox[1];
 }
 
-//std::map<int, Yolo::Detection>
-//Trigger::filterObjects(std::vector<Yolo::Detection> &vehicles, std::vector<std::pair<int, std::vector<float>>>& idx) {
-//
-//}
+std::vector<std::string>
+Trigger::getColors(Detect &det, std::vector<Yolo::Detection> &vehicles, cv::Mat &frame) {
+    colors.clear();
 
+
+    for(auto & vehicle : vehicles){
+        cv::Rect r(vehicle.bbox[0], vehicle.bbox[1], vehicle.bbox[2], vehicle.bbox[3]);
+        int x = std::max(r.x, 0);
+        int y = std::max(r.y, 0);
+        int width = std::min(r.x + r.width, frame.cols) - x;
+        int height = std::min(r.y + r.height, frame.rows) - y;
+        cv::Rect adjustedRect(x, y, width, height);
+        cv::Mat image_roi = frame(adjustedRect);
+
+        int vehicle_color = det.doInferenceCls(image_roi);
+        colors.emplace_back(color_classes[vehicle_color]);
+    }
+
+    return colors;
+}
