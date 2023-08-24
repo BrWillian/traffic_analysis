@@ -1,7 +1,7 @@
 #include "../include/tracker.h"
 
-Tracker::Tracker(int maxDisappeared)
-        : nextObjectID(0), maxDisappeared(maxDisappeared) {
+Tracker::Tracker()
+        : nextObjectID(0) {
 }
 
 double Tracker::calcIoU(const std::vector<float> &bbox1, const std::vector<float> &bbox2) {
@@ -23,46 +23,22 @@ double Tracker::calcIoU(const std::vector<float> &bbox1, const std::vector<float
 
 void Tracker::register_Object(const std::vector<float> &bbox) {
     int objID = nextObjectID++;
-    objects.push_back({objID, bbox});
-    disappeared[objID] = 0;
+    objects.emplace_back(objID, bbox);
 }
 
 void Tracker::deleteObject(int objectID) {
     objects.erase(std::remove_if(objects.begin(), objects.end(), [objectID](const auto &elem) {
         return elem.first == objectID;
     }), objects.end());
-
-    disappeared.erase(objectID);
 }
 
-std::vector<std::pair<int, std::vector<float>>> Tracker::update(std::vector<Yolo::Detection>& detections)
+
+void Tracker::update(std::vector<Vehicle::Detection>& detections)
 {
-    if (detections.empty()) {
-        // Atualizar o contador de desaparecimento
-        for (auto& item : disappeared)
-            item.second++;
-
-        // Remover objetos que desapareceram
-        auto it = std::remove_if(objects.begin(), objects.end(), [this](const auto& elem) {
-            int objectID = elem.first;
-            return disappeared[objectID] > maxDisappeared;
-        });
-        objects.erase(it, objects.end());
-
-        // Remover objetos desaparecidos da lista de desaparecidos
-        for (auto it = disappeared.begin(); it != disappeared.end();) {
-            if (it->second > maxDisappeared)
-                it = disappeared.erase(it);
-            else
-                ++it;
-        }
-
-        return objects;
-    }
-
     if (objects.empty()) {
-        for (const auto& detection : detections) {
+        for (auto& detection : detections) {
             std::vector<float> bbox(detection.bbox, detection.bbox + 4);
+            detection.id = nextObjectID;
             register_Object(bbox);
         }
     } else {
@@ -113,8 +89,8 @@ std::vector<std::pair<int, std::vector<float>>> Tracker::update(std::vector<Yolo
             // Atualizar objeto existente com o novo bbox
             int objectID = objectIDs[maxRow];
             std::vector<float> bbox(detections[maxCol].bbox, detections[maxCol].bbox + 4);
+            detections[maxCol].id = objectID;
             objects[maxRow].second = bbox;
-            disappeared[objectID] = 0;
 
             // Marcar a linha e coluna como usadas
             usedRows.insert(maxRow);
@@ -140,22 +116,17 @@ std::vector<std::pair<int, std::vector<float>>> Tracker::update(std::vector<Yolo
         std::set_difference(inpCols.begin(), inpCols.end(), usedCols.begin(), usedCols.end(),
                             std::inserter(unusedCols, unusedCols.begin()));
 
-        // Remover objetos não correspondidos que desapareceram
+
         for (const auto& row : unusedRows) {
             int objectID = objectIDs[row];
-            disappeared[objectID] += 1;
-
-            if (disappeared[objectID] > maxDisappeared)
-                deleteObject(objectID);
+            deleteObject(objectID);
         }
 
         // Registrar novos objetos correspondentes
-        for (const auto& col : unusedCols) {
+        for (auto& col : unusedCols) {
             std::vector<float> bbox(detections[col].bbox, detections[col].bbox + 4);
             register_Object(bbox);
+            detections[col].id = nextObjectID - 1;
         }
     }
-
-    return objects;
 }
-

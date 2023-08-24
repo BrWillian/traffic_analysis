@@ -22,16 +22,16 @@ Detect::Detect(uint32_t modelType) {
     this->maxInputSize = 1920*1080;
     this->outputBlobName = "output";
     this->inputBlobName = "images";
-    this->confThresh = 0.4;
-    this->nmsThresh = 0.5;
+    this->confThresh = 0.5;
+    this->nmsThresh = 0.4;
     this->batchSize = 1;
     this->modelType = modelType;
 
     switch(modelType){
         case MODEL_TYPE_VEHICLE:
             this->outputSize = 50 * sizeof(Yolo::Detection) / sizeof(float) + 1;
-            this->inputH = 640;
-            this->inputW = 640;
+            this->inputH = 320;
+            this->inputW = 320;
             this->numClasses = 6;
             break;
         case MODEL_TYPE_PLATE:
@@ -188,13 +188,13 @@ void Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
     std::map<float, std::vector<Yolo::Detection>> m;
     for (int i = 0; i < output[0] && i < 20; i++) {
         if (output[1 + det_size * i + 4] <= confThresh) continue;
-        Yolo::Detection det;
+        Yolo::Detection det{};
         memcpy(&det, &output[1 + det_size * i], det_size * sizeof(float));
         if (m.count(det.class_id) == 0) m.emplace(det.class_id, std::vector<Yolo::Detection>());
         m[det.class_id].push_back(det);
     }
-    for (auto it = m.begin(); it != m.end(); it++) {
-        auto& dets = it->second;
+    for (auto & it : m) {
+        auto& dets = it.second;
         std::sort(dets.begin(), dets.end(), cmp);
         for (size_t m = 0; m < dets.size(); ++m) {
             auto& item = dets[m];
