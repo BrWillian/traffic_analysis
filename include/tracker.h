@@ -1,5 +1,5 @@
-#ifndef TRACKER_H
-#define TRACKER_H
+#ifndef TRAFFIC_ANALYSIS_TRACKER_H
+#define TRAFFIC_ANALYSIS_TRACKER_H
 
 #include <algorithm>
 #include <iterator>
@@ -7,23 +7,23 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "../include/yololayer.h"
+#include "yololayer.h"
+#include "types.h"
 
 class Tracker {
 public:
-    explicit Tracker(int maxDisappeared);
+    Tracker();
 
     void register_Object(const std::vector<float>& bbox);
     void deleteObject(int objectID);
-    std::vector<std::pair<int, std::vector<float>>> update(std::vector<Yolo::Detection>& detections);
+    void update(std::vector<Vehicle::Detection>& detections);
 
 private:
     double calcIoU(const std::vector<float>& bbox1, const std::vector<float>& bbox2);
 
     int nextObjectID;
-    int maxDisappeared;
     std::vector<std::pair<int, std::vector<float>>> objects;
     std::unordered_map<int, int> disappeared;
 };
 
-#endif // TRACKER_H
+#endif //TRAFFIC_ANALYSIS_TRACKER_H

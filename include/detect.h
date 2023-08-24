@@ -60,6 +60,7 @@ private:
     float nmsThresh{};
     float confThresh{};
 
+
     float *imgBuffer{};
     float *outputBuffer{};
     std::vector<void *> buffers{};
