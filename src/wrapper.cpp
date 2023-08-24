@@ -39,8 +39,8 @@ std::string Serialize(const std::vector<Vehicle::Detection>& res) {
     for (auto vh = res.begin(); vh != res.end();) {
         ss << "{\"id\":" << vh->id;
         ss << ",\"ocr\":\"" << vh->ocr;
-        ss << "\",\"placa\":\"" << boolToString(vh->plate);
-        ss << "\",\"cor\":\"" << vh->color;
+        ss << "\",\"placa\":" << boolToString(vh->plate);
+        ss << ",\"cor\":\"" << vh->color;
         ss << "\",\"classe\":\"" << vh->class_name;
         ss << "\",\"centroid\":{\"x\":" << vh->centroid.x;
         ss << ",\"y\":" << vh->centroid.y << "}";
