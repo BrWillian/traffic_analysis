@@ -1,0 +1,10 @@
+//
+// Created by willian on 24/07/23.
+//
+
+#ifndef TRAFFIC_ANALYSIS_WEIGHTS_H
+#define TRAFFIC_ANALYSIS_WEIGHTS_H
+
+@WEIGHTS_HEADER@
+
+#endif //TRAFFIC_ANALYSIS_WEIGHTS_H
