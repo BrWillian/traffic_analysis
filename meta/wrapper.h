@@ -3,6 +3,7 @@
 
 #ifdef __cplusplus
 #include <opencv2/opencv.hpp>
+#include "../include/core.h"
 #endif
 
 #if defined(__GNUC__)
@@ -23,28 +24,12 @@
 extern "C" {
 #endif
     struct VehicleDetect{
-        void *vehicle_detect;
-        void *plate_detect;
-        void *ocr_detect;
-        void *color_infer;
-        void *obj_tracker;
+        TrafficCore *TrafficCore;
+        std::vector<Vehicle::Detection> *vehicles;
+        cv::Mat *image;
     };
 
     typedef struct VehicleDetect vehicle_t;
-
-    typedef struct Point{
-        int x, y;
-    } Point;
-
-    struct Detection{
-        const char* class_name;
-        int bbox[4];
-        Point centroid;
-        float conf;
-        int obj_id;
-        const char* plate;
-        const char* color;
-    };
 
     VEHICLEDETECT_API vehicle_t* C_vehicleDetect();
 
