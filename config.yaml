@@ -1,8 +1,8 @@
-margem: 5
+margem: 50
 faixas:
   - nome: faixa1
-    pt1: [10, 20]
-    pt2: [30, 40]
+    pt1: [40, 350]
+    pt2: [530, 340]
   - nome: faixa2
-    pt1: [50, 60]
-    pt2: [70, 80]
+    pt1: [590, 340]
+    pt2: [1100, 350]
