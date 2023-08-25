@@ -140,6 +140,8 @@ std::string TrafficCore::getOcr(std::vector<Yolo::Detection> &plates, cv::Mat &p
         TrafficCore::checkBbox(r, frame);
 
         cv::Mat image_roi = plate(r);
+        TrafficCore::cvtPlate(image_roi);
+
         std::vector<Yolo::Detection> chars = this->ocrDet->doInference(image_roi);
         plate_roi[0] = r.x; plate_roi[1] = r.y; plate_roi[2] = r.width; plate_roi[3] = r.height;
         if (chars.size() < 7) {
@@ -247,4 +249,13 @@ void TrafficCore::checkBbox(cv::Rect& bbox, const cv::Mat& frame) {
     int width = std::min(bbox.width, frame.cols - x);
     int height = std::min(bbox.height, frame.rows - y);
     bbox = (width <= 0 || height <= 0) ? cv::Rect(1,1,1,1) : cv::Rect(x, y, width, height);
+}
+
+void TrafficCore::cvtPlate(cv::Mat &image_roi) {
+    cv::Mat image_roi_grayscale;
+    cv::cvtColor(image_roi, image_roi_grayscale, cv::COLOR_RGB2GRAY);
+    cv::Mat gray3Channel(image_roi.size(), CV_8UC3);
+    cv::Mat grayChannels[] = { image_roi_grayscale, image_roi_grayscale, image_roi_grayscale };
+    cv::merge(grayChannels, 3, gray3Channel);
+    gray3Channel.copyTo(image_roi);
 }
