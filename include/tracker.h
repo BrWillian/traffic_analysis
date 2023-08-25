@@ -22,7 +22,9 @@ private:
     double calcIoU(const std::vector<float>& bbox1, const std::vector<float>& bbox2);
 
     int nextObjectID;
+    int maxDisappeared;
     std::vector<std::pair<int, std::vector<float>>> objects;
+
     std::unordered_map<int, int> disappeared;
 };
 

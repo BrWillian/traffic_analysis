@@ -1,7 +1,7 @@
 #include "../include/tracker.h"
 
 Tracker::Tracker()
-        : nextObjectID(0) {
+        : nextObjectID(0), maxDisappeared(1){
 }
 
 double Tracker::calcIoU(const std::vector<float> &bbox1, const std::vector<float> &bbox2) {
@@ -31,11 +31,27 @@ void Tracker::deleteObject(int objectID) {
         return elem.first == objectID;
     }), objects.end());
 }
-
-
 void Tracker::update(std::vector<Vehicle::Detection>& detections)
 {
-    if (objects.empty()) {
+    if (detections.empty()) {
+        for (auto& item : disappeared)
+            item.second++;
+
+        auto it = std::remove_if(objects.begin(), objects.end(), [this](const auto& elem) {
+            int objectID = elem.first;
+            return disappeared[objectID] > maxDisappeared;
+        });
+        objects.erase(it, objects.end());
+
+        for (auto it = disappeared.begin(); it != disappeared.end();) {
+            if (it->second > maxDisappeared)
+                it = disappeared.erase(it);
+            else
+                ++it;
+        }
+
+        return;
+    }if (objects.empty()) {
         for (auto& detection : detections) {
             std::vector<float> bbox(detection.bbox, detection.bbox + 4);
             detection.id = nextObjectID;
@@ -61,7 +77,6 @@ void Tracker::update(std::vector<Vehicle::Detection>& detections)
         std::set<int> usedCols;
 
         while (true) {
-            // Encontrar o maior valor de IoU
             double maxIoU = 0.0;
             size_t maxRow = 0;
             size_t maxCol = 0;
@@ -76,27 +91,23 @@ void Tracker::update(std::vector<Vehicle::Detection>& detections)
                 }
             }
 
-            // Verificar se o maior valor de IoU atende ao limiar
             if (maxIoU < 0.25)
                 break;
 
-            // Verificar se a linha ou coluna já foram usadas
             if (usedRows.count(maxRow) || usedCols.count(maxCol)) {
                 iouMatrix[maxRow][maxCol] = 0.0;
                 continue;
             }
 
-            // Atualizar objeto existente com o novo bbox
             int objectID = objectIDs[maxRow];
             std::vector<float> bbox(detections[maxCol].bbox, detections[maxCol].bbox + 4);
             detections[maxCol].id = objectID;
             objects[maxRow].second = bbox;
+            disappeared[objectID] = 0;
 
-            // Marcar a linha e coluna como usadas
             usedRows.insert(maxRow);
             usedCols.insert(maxCol);
 
-            // Zerar o valor de IoU para evitar duplicatas
             iouMatrix[maxRow][maxCol] = 0.0;
         }
 
@@ -116,17 +127,18 @@ void Tracker::update(std::vector<Vehicle::Detection>& detections)
         std::set_difference(inpCols.begin(), inpCols.end(), usedCols.begin(), usedCols.end(),
                             std::inserter(unusedCols, unusedCols.begin()));
 
-
         for (const auto& row : unusedRows) {
             int objectID = objectIDs[row];
-            deleteObject(objectID);
+            disappeared[objectID] += 1;
+
+            if (disappeared[objectID] > maxDisappeared)
+                deleteObject(objectID);
         }
 
-        // Registrar novos objetos correspondentes
-        for (auto& col : unusedCols) {
+        for (const auto& col : unusedCols) {
             std::vector<float> bbox(detections[col].bbox, detections[col].bbox + 4);
+            detections[col].id = nextObjectID;
             register_Object(bbox);
-            detections[col].id = nextObjectID - 1;
         }
     }
 }
