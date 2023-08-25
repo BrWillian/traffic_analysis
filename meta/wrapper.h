@@ -2,8 +2,13 @@
 #define WRAPPER_H
 
 #ifdef __cplusplus
+#include <sstream>
+#include <iomanip>
+#include <string>
+#include <future>
 #include <opencv2/opencv.hpp>
 #include "../include/core.h"
+#include "../generated/version.h"
 #endif
 
 #if defined(__GNUC__)

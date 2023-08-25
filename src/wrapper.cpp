@@ -1,7 +1,4 @@
-#include <string>
-#include <future>
 #include "../meta/wrapper.h"
-#include "../generated/version.h"
 
 vehicle_t* CDECL C_vehicleDetect(){
     vehicle_t* objwrapper;
@@ -30,37 +27,37 @@ void CDECL C_vehicleDetectDestroy(vehicle_t* vh){
     delete static_cast<cv::Mat*>(vh->image);
     free(vh);
 }
-std::string boolToString(bool value) {
-    return value ? "true" : "false";
-}
 std::string Serialize(const std::vector<Vehicle::Detection>& res) {
+
     std::stringstream ss;
     ss << "{\"detections\": [";
-    for (auto vh = res.begin(); vh != res.end();) {
-        ss << "{\"id\":" << vh->id;
-        ss << ",\"ocr\":\"" << vh->ocr;
-        ss << "\",\"placa\":" << boolToString(vh->plate);
-        ss << ",\"cor\":\"" << vh->color;
-        ss << "\",\"classe\":\"" << vh->class_name;
-        ss << "\",\"centroid\":{\"x\":" << vh->centroid.x;
-        ss << ",\"y\":" << vh->centroid.y << "}";
-        ss << ",\"x\":" << vh->bbox[0];
-        ss << ",\"y\":" << vh->bbox[1];
-        ss << ",\"w\":" << vh->bbox[2];
-        ss << ",\"h\":" << vh->bbox[3];
-        ss << ",\"placa_bbox\":{\"x\":" << vh->plate_bbox[0];
-        ss << ",\"y\":" << vh->plate_bbox[1];
-        ss << ",\"w\":" << vh->plate_bbox[2];
-        ss << ",\"h\":" << vh->plate_bbox[3] << "}";
-        if (++vh == res.end()) {
-            ss << "}";
-        } else {
-            ss << "},";
+
+    for (size_t i = 0; i < res.size(); ++i) {
+        const Vehicle::Detection& vh = res[i];
+        ss << "{";
+        ss << "\"id\":" << vh.id << ",";
+        ss << "\"ocr\":\"" << vh.ocr << "\",";
+        ss << "\"placa\":" << std::boolalpha << vh.plate << ",";
+        ss << "\"faixa\":" << vh.faixa + 1 << ",";
+        ss << "\"cor\":\"" << vh.color << "\",";
+        ss << "\"classe\":\"" << vh.class_name << "\",";
+        ss << "\"x\":" << vh.bbox[0] << ",";
+        ss << "\"y\":" << vh.bbox[1] << ",";
+        ss << "\"w\":" << vh.bbox[2] << ",";
+        ss << "\"h\":" << vh.bbox[3] << ",";
+        ss << "\"centroid\":{\"x\":" << vh.centroid.x << ",";
+        ss << "\"y\":" << vh.centroid.y << "},";
+        ss << "\"placa_bbox\":{\"x\":" << vh.plate_bbox[0] << ",";
+        ss << "\"y\":" << vh.plate_bbox[1] << ",";
+        ss << "\"w\":" << vh.plate_bbox[2] << ",";
+        ss << "\"h\":" << vh.plate_bbox[3] << "}";
+        ss << "}";
+        if (i != res.size() - 1) {
+            ss << ",";
         }
     }
-    ss << "]";
-    ss << "}";
 
+    ss << "]}";
     return ss.str();
 }
 const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSize){
