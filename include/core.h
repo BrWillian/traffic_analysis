@@ -19,7 +19,7 @@
 class TrafficCore {
 public:
     TrafficCore();
-    //TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Tracker *trackerDet);
+    TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Tracker *trackerDet);
     ~TrafficCore();
 
     void checkLinePassage(std::vector<Vehicle::Detection>& detections);
@@ -58,10 +58,6 @@ private:
     static bool compareByConfidence(const Yolo::Detection& a, const Yolo::Detection& b);
     static bool compareByHeight(const Yolo::Detection& a, const Yolo::Detection& b);
     static void checkBbox(cv::Rect& bbox,const cv::Mat& frame);
-
-    //GAMBI LUIS
-    static void cvtPlate(cv::Mat& image_roi);
-
 
     // CLASSES
     static inline std::string color_classes[] = {"preta", "azul", "cinza", "verde", "vermelha", "branca", "amarela", "desconhecida"};

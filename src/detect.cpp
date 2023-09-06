@@ -41,11 +41,11 @@ Detect::Detect(uint32_t modelType) {
             this->numClasses = 1;
             break;
         case MODEL_TYPE_OCR:
-            this->outputSize = 100 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+            this->outputSize = 300 * sizeof(Yolo::Detection) / sizeof(float) + 1;
             this->inputH = 320;
             this->inputW = 320;
             this->numClasses = 36;
-            this->confThresh = 0.1;
+            this->confThresh = 0.002;
             this->nmsThresh = 0.8;
             break;
         case MODEL_TYPE_COLOR:
@@ -139,9 +139,8 @@ void Detect::createContextExecution(){
     this->outputIndex = engine->getBindingIndex(outputBlobName);
     
     this->buffers = std::vector<void *>(engine->getNbBindings());
-    
     CUDA_CHECK(cudaMalloc(&buffers[inputIndex], batchSize * 3 * inputH * inputW * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&buffers[outputIndex], batchSize * outputSize * sizeof(float)));       
+    CUDA_CHECK(cudaMalloc(&buffers[outputIndex], batchSize * outputSize * sizeof(float)));
 }
 
 std::vector<Yolo::Detection> Detect::doInference(cv::Mat &img){
@@ -150,10 +149,12 @@ std::vector<Yolo::Detection> Detect::doInference(cv::Mat &img){
         return std::vector<Yolo::Detection>{};
     }
     std::vector<Yolo::Detection> result{};
- 
+
     preprocessImage(img, imgBuffer);
 
-    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, nullptr));
+    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float),
+                               cudaMemcpyHostToDevice, nullptr));
+
     context->enqueue(batchSize, buffers.data(), nullptr, nullptr);
     CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, nullptr));
 
@@ -186,7 +187,7 @@ float Detect::iou(float lbox[4], float rbox[4]){
 void Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
     int det_size = sizeof(Yolo::Detection) / sizeof(float);
     std::map<float, std::vector<Yolo::Detection>> m;
-    for (int i = 0; i < output[0] && i < 20; i++) {
+    for (int i = 0; i < output[0]; i++) {
         if (output[1 + det_size * i + 4] <= confThresh) continue;
         Yolo::Detection det{};
         memcpy(&det, &output[1 + det_size * i], det_size * sizeof(float));

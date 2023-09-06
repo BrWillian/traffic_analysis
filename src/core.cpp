@@ -6,13 +6,13 @@
 
 #include "include/core.h"
 
-//TrafficCore::TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Tracker* trackerDet) {
-//    this->vehicleDet = vehicleDet;
-//    this->plateDet = plateDet;
-//    this->ocrDet = ocrDet;
-//    this->colorCls = colorCls;
-//    this->trackerDet = trackerDet;
-//}
+TrafficCore::TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Tracker* trackerDet) {
+    this->vehicleDet = vehicleDet;
+    this->plateDet = plateDet;
+    this->ocrDet = ocrDet;
+    this->colorCls = colorCls;
+    this->trackerDet = trackerDet;
+}
 TrafficCore::TrafficCore() {
     this->vehicleDet = new Detect(MODEL_TYPE_VEHICLE);
     this->plateDet = new Detect(MODEL_TYPE_PLATE);
@@ -91,12 +91,16 @@ void TrafficCore::getVehicles(cv::Mat &frame, std::vector<Vehicle::Detection>& d
 
 void TrafficCore::getColors(std::vector<Vehicle::Detection>& vehicles, cv::Mat &frame) {
     for(auto & vehicle : vehicles){
-        cv::Rect r(vehicle.bbox[0], vehicle.bbox[1], vehicle.bbox[2], vehicle.bbox[3]);
-        TrafficCore::checkBbox(r, frame);
-        cv::Mat image_roi = frame(r);
+        if(vehicle.class_name != "moto" && vehicle.class_name != "caminhao" && vehicle.class_name != "onibus") {
+            cv::Rect r(vehicle.bbox[0], vehicle.bbox[1], vehicle.bbox[2], vehicle.bbox[3]);
+            TrafficCore::checkBbox(r, frame);
+            cv::Mat image_roi = frame(r);
 
-        int vehicle_color = this->colorCls->doInferenceCls(image_roi);
-        vehicle.color = color_classes[(int)vehicle_color];
+            int vehicle_color = this->colorCls->doInferenceCls(image_roi);
+            vehicle.color = color_classes[static_cast<int>(vehicle_color)];
+        }else{
+            vehicle.color = color_classes[7];
+        }
     }
 }
 
@@ -119,7 +123,6 @@ void TrafficCore::getplateOcr(std::vector<Vehicle::Detection> &vehicles, cv::Mat
         }else {
             vehicle.plate = false;
         }
-
     }
 }
 
@@ -138,16 +141,13 @@ std::string TrafficCore::getOcr(std::vector<Yolo::Detection> &plates, cv::Mat &p
         r.height = std::min(r.height, frame.rows - r.y);
         r.width = std::min(r.width, frame.cols - r.x);
         TrafficCore::checkBbox(r, frame);
-
         cv::Mat image_roi = plate(r);
-        TrafficCore::cvtPlate(image_roi);
 
         std::vector<Yolo::Detection> chars = this->ocrDet->doInference(image_roi);
         plate_roi[0] = r.x; plate_roi[1] = r.y; plate_roi[2] = r.width; plate_roi[3] = r.height;
         if (chars.size() < 7) {
             continue;
         }
-
         std::sort(chars.begin(), chars.end(), compareByConfidence);
         int counter = std::min(7, (int)chars.size());
         std::vector<Yolo::Detection> plateTmp;
@@ -249,13 +249,4 @@ void TrafficCore::checkBbox(cv::Rect& bbox, const cv::Mat& frame) {
     int width = std::min(bbox.width, frame.cols - x);
     int height = std::min(bbox.height, frame.rows - y);
     bbox = (width <= 0 || height <= 0) ? cv::Rect(1,1,1,1) : cv::Rect(x, y, width, height);
-}
-
-void TrafficCore::cvtPlate(cv::Mat &image_roi) {
-    cv::Mat image_roi_grayscale;
-    cv::cvtColor(image_roi, image_roi_grayscale, cv::COLOR_RGB2GRAY);
-    cv::Mat gray3Channel(image_roi.size(), CV_8UC3);
-    cv::Mat grayChannels[] = { image_roi_grayscale, image_roi_grayscale, image_roi_grayscale };
-    cv::merge(grayChannels, 3, gray3Channel);
-    gray3Channel.copyTo(image_roi);
 }
