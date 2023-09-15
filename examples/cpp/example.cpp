@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
         }
 
         cv::imshow("frame", image);
-        cv::waitKey(90);
+        cv::waitKey(1);
 
         auto start = std::chrono::high_resolution_clock::now();
 

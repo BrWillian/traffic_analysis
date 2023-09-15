@@ -1,6 +1,6 @@
 #include <iostream>
 #include <chrono>
-#include <thread>
+#include <future>
 #include <opencv2/opencv.hpp>
 #define USE_WRAPPER 0
 
@@ -25,43 +25,17 @@ int main(int argc, char *argv[])
     auto *vh = new Detect(MODEL_TYPE_VEHICLE);
     auto *pd = new Detect(MODEL_TYPE_PLATE);
     auto *od = new Detect(MODEL_TYPE_OCR);
-    auto *tracker = new Tracker(0);
+    auto *tracker = new Tracker();
+    auto *dc = new Detect(MODEL_TYPE_COLOR);
 
     Trigger::Margin = 30;
     Trigger::Lines = {
-            std::make_pair(cv::Point(40, 350), cv::Point(530, 340)),
-            std::make_pair(cv::Point(590, 340), cv::Point(1100, 350)),
+            std::make_pair(cv::Point(40, 275), cv::Point(530, 275)),
+            std::make_pair(cv::Point(590, 265), cv::Point(1100, 265)),
     };
 #else
     vehicle_t *vh = C_vehicleDetect();
 #endif
-    //vh->createContextExecution();
-
-//    std::string images_inf[] = {"/root/imagem/img_100.jpg","/root/imagem/img_101.jpg","/root/imagem/img_102.jpg","/root/imagem/img_103.jpg","/root/imagem/img_104.jpg","/root/imagem/img_105.jpg","/root/imagem/img_106.jpg","/root/imagem/img_107.jpg","/root/imagem/img_108.jpg","/root/imagem/img_109.jpg"};
-//    int num_images = sizeof(images_inf)/sizeof(images_inf[0]);
-
-//    for (int b = 0; b < num_images; b++) {
-//        cv::Mat img = cv::imread(images_inf[b]);
-//        auto start = std::chrono::high_resolution_clock::now();
-
-//        auto res = vh->doInference(img);
-
-//        auto end = std::chrono::high_resolution_clock::now();
-
-
-//        for(auto &it: res){
-//            std::cout<<it.class_id<<std::endl;
-//        }
-
-//        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-//        std::cout << "Inferência: " << b + 1 << " FPS: " << 1000.0 / (static_cast<double>(time.count())) << std::endl;
-
-//        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-//    }
-
-
-
 
 
     cv::VideoCapture cap(argv[1]);
@@ -77,15 +51,12 @@ int main(int argc, char *argv[])
 
 
     std::vector<std::pair<cv::Point, cv::Point>> lines{
-        std::make_pair(cv::Point(40, 350), cv::Point(530, 340)),
-        std::make_pair(cv::Point(590, 340), cv::Point(1100, 350)),
+        std::make_pair(cv::Point(40, 275), cv::Point(530, 265)),
+        std::make_pair(cv::Point(590, 265), cv::Point(1100, 275)),
     };
-
-//    std::vector<std::vector<cv::Point>> polygons = getPolygons();
 
 #if USE_WRAPPER == 0
     //cv::VideoWriter video("outcpp.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(960,720));
-
     while(true) {
 
         cap >> frame;
@@ -95,18 +66,38 @@ int main(int argc, char *argv[])
             break;
         }
 
-
-        auto start = std::chrono::high_resolution_clock::now();
         try {
+
+            auto start = std::chrono::high_resolution_clock::now();
+
             std::vector<Yolo::Detection> vehicles = Trigger::getVehicles(*vh, copy_frame);
 
             std::vector<bool> trigged = Trigger::checkLinePassage(vehicles);
 
-            std::vector<std::string> results = Trigger::getplateOcr(*pd, *od, trigged, vehicles, copy_frame);
+            Trigger::filterObjects(vehicles, trigged);
 
-            auto objects = tracker->update(vehicles);
+            std::future<std::vector<std::string>> colors_future = std::async(std::launch::async, [&]() {
+                return Trigger::getColors(*dc, vehicles, copy_frame);
+            });
+
+            std::future<std::vector<std::string>> ocr_future = std::async(std::launch::async, [&]() {
+                return Trigger::getplateOcr(*pd, *od, vehicles, copy_frame);
+            });
 
 
+            auto colors = colors_future.get();
+            auto results = ocr_future.get();
+
+            tracker->update(vehicles);
+
+            auto end = std::chrono::high_resolution_clock::now();
+
+
+            auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+            std::cout << "Inferência: " << " FPS: " << 1000.0 / (static_cast<double>(time.count())) << std::endl;
+
+            std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 
             cv::line(frame, cv::Point(40, 350), cv::Point(530, 340), cv::Scalar(0, 255, 0));
             cv::line(frame, cv::Point(590, 340), cv::Point(1080, 350), cv::Scalar(0, 255, 0));
@@ -122,11 +113,11 @@ int main(int argc, char *argv[])
                 cv::circle(frame, cv::Point((vehicles[i].bbox[0] + vehicles[i].bbox[2] + vehicles[i].bbox[0]) / 2,
                                             (vehicles[i].bbox[1] + vehicles[i].bbox[3] + vehicles[i].bbox[1]) / 2), 5,
                            cv::Scalar(0, 0, 255), -1);
-                cv::putText(frame, std::to_string(objects[i].first),
+                cv::putText(frame, std::to_string(vehicles[i].id),
                             cv::Point((vehicles[i].bbox[0] + vehicles[i].bbox[2] + vehicles[i].bbox[0]) / 2,
                                       (vehicles[i].bbox[1] + vehicles[i].bbox[3] + vehicles[i].bbox[1]) / 2),
                             cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
-                std::cout << "ID: " + std::to_string(objects[i].first) << std::endl;
+                std::cout << "ID: " + std::to_string(vehicles[i].id) + " Color: " + colors[i] << std::endl;
 
                 cv::Rect roi(vehicles[i].bbox[0], vehicles[i].bbox[1], vehicles[i].bbox[2], vehicles[i].bbox[3]);
                 cv::Mat image_roi = copy_frame(roi);
@@ -138,42 +129,20 @@ int main(int argc, char *argv[])
                 }
 
 
-                cv::imshow(results[i] + " ID: " + std::to_string(objects[i].first), image_roi);
+                cv::imshow(results[i] +" Color: " + colors[i] +  " ID: " + std::to_string(vehicles[i].id), image_roi);
                 cv::waitKey(0);
             }
-
-
-//        for(auto &it: objects){
-//            cv::circle(frame, cv::Point(it.second.first, it.second.second), 5, cv::Scalar(0, 0, 255), -1);
-//            std::string ID = std::to_string(it.first);
-//            cv::putText(frame, ID, cv::Point(it.second.first - 10, it.second.second - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0));
-//        }
-
-            // std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
-
-
-
-            cv::imshow("name", frame);
-
             char c = (char) cv::waitKey(90);
             if (c == 27)
                 break;
 
-        } catch (...){
-            continue;
+        } catch (std::exception &e){
+            std::cout<<e.what()<<std::endl;
         }
 
-        //cv::resize(frame, frame, cv::Size(960,720));
+        cv::resize(frame, frame, cv::Size(960,720));
+        cv::imshow("name", frame);
         //video.write(frame);
-        auto end = std::chrono::high_resolution_clock::now();
-
-
-        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-        //std::cout << "Inferência: " << " FPS: " << 1000.0 / (static_cast<double>(time.count())) << std::endl;
-
-        //std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 
     }
 
