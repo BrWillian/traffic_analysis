@@ -1,6 +1,10 @@
-#ifndef WEIGHTS_H
-#define WEIGHTS_H
+//
+// Created by willian on 24/07/23.
+//
 
-@GEN_WEIGHTS@
+#ifndef TRAFFIC_ANALYSIS_WEIGHTS_H
+#define TRAFFIC_ANALYSIS_WEIGHTS_H
 
-#endif //WEIGHTS_H
+@WEIGHTS_HEADER@
+
+#endif //TRAFFIC_ANALYSIS_WEIGHTS_H

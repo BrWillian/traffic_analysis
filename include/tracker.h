@@ -1,41 +1,31 @@
-#ifndef TRACKER_H
-#define TRACKER_H
+#ifndef TRAFFIC_ANALYSIS_TRACKER_H
+#define TRAFFIC_ANALYSIS_TRACKER_H
 
-#include <map>
-#include <set>
-#include <cmath>
-#include <vector>
 #include <algorithm>
-#include <iostream>
 #include <iterator>
-#include "../include/yololayer.h"
+#include <set>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+#include "yololayer.h"
+#include "types.h"
 
-namespace Vehicle
-{
-    class Tracker
-    {
-    public:
-        explicit Tracker(int maxDisappeared);
+class Tracker {
+public:
+    Tracker();
 
-        void register_Object(int cX, int cY);
+    void register_Object(const std::vector<float>& bbox);
+    void deleteObject(int objectID);
+    void update(std::vector<Vehicle::Detection>& detections);
 
-        std::vector<std::pair<int, std::pair<int, int>>> update(std::vector<Yolo::Detection> &dets);
+private:
+    double calcIoU(const std::vector<float>& bbox1, const std::vector<float>& bbox2);
 
-        // <ID, centroids>
-        std::vector<std::pair<int, std::pair<int, int>>> objects;
-        void deleteObject(int objectID);
-    private:
-        int maxDisappeared;
+    int nextObjectID;
+    int maxDisappeared;
+    std::vector<std::pair<int, std::vector<float>>> objects;
 
-        int nextObjectID;
+    std::unordered_map<int, int> disappeared;
+};
 
-        static double calcDistance(double x1, double y1, double x2, double y2);
-
-        // <ID, count>
-        std::map<int, int> disappeared;
-
-        //std::vector<float>::size_type findMin(const std::vector<float> &v, std::vector<float>::size_type pos = 0);
-    };
-}
-
-#endif // TRACKER_H
+#endif //TRAFFIC_ANALYSIS_TRACKER_H

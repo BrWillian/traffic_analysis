@@ -2,7 +2,13 @@
 #define WRAPPER_H
 
 #ifdef __cplusplus
+#include <sstream>
+#include <iomanip>
+#include <string>
+#include <future>
 #include <opencv2/opencv.hpp>
+#include "../include/core.h"
+#include "../generated/version.h"
 #endif
 
 #if defined(__GNUC__)
@@ -23,26 +29,12 @@
 extern "C" {
 #endif
     struct VehicleDetect{
-        void *detectObj;
-        void *trackerObj;
-        void *areaCheck;
+        TrafficCore *TrafficCore;
+        std::vector<Vehicle::Detection> *vehicles;
+        cv::Mat *image;
     };
 
     typedef struct VehicleDetect vehicle_t;
-
-    const char* classes[] = {"carro", "moto", "onibus", "caminhao", "van", "caminhonete"};
-
-    typedef struct Point{
-        int x, y;
-    } Point;
-
-    struct Detection{
-        const char* class_name;
-        int bbox[4];
-        Point centroid;
-        float conf;
-        int obj_id;
-    };
 
     VEHICLEDETECT_API vehicle_t* C_vehicleDetect();
 
@@ -60,7 +52,6 @@ extern "C" {
 
 #ifdef __cplusplus
     VEHICLEDETECT_API std::string doInference(vehicle_t* vh, cv::Mat& img);
-    VEHICLEDETECT_API std::vector<std::vector<cv::Point>> getPolygons();
 #endif
 
 #endif // WRAPPER_H

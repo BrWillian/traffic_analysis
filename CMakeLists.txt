@@ -4,13 +4,16 @@ project(traffic_analysis LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-add_definitions(-std=c++14)
+add_definitions(-std=c++17)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+
+set(CMAKE_INSTALL_RPATH "/usr/local/tensorrt/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 execute_process(
         COMMAND git rev-parse --abbrev-ref HEAD
@@ -43,7 +46,7 @@ configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/meta/version.h
         ${CMAKE_CURRENT_SOURCE_DIR}/generated/version.h
 )
-message(STATUS "Generating weights.h")
+message(STATUS "Generating weights.cpp")
 
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
@@ -53,7 +56,41 @@ execute_process(
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
         COMMAND xxd -i vehicle.engine
-        OUTPUT_VARIABLE GEN_WEIGHTS
+        OUTPUT_VARIABLE VEHICLE_WEIGHTS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND xxd -i plate.engine
+        OUTPUT_VARIABLE PLATE_WEIGHTS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND xxd -i ocr.engine
+        OUTPUT_VARIABLE OCR_WEIGHTS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND xxd -i color.engine
+        OUTPUT_VARIABLE COLOR_WEIGHTS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/meta/weights.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/generated/weights.cpp
+)
+
+message(STATUS "Generating weights.h")
+
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/generated/
+        COMMAND bash -c "sed -n -e 's/\\(unsigned char [^=]*\\).*/extern \\1;/p' -e 's/\\(unsigned int [^=]*\\).*/extern \\1;/p' weights.cpp | sed 's/ ;/;/g'"
+        OUTPUT_VARIABLE WEIGHTS_HEADER
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
@@ -65,6 +102,19 @@ configure_file(
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
         COMMAND rm vehicle.engine
+)
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND rm plate.engine
+)
+
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND rm ocr.engine
+)
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND rm color.engine
 )
 
 find_package(CUDA 10.2 REQUIRED)
@@ -85,16 +135,18 @@ if(NOT DEFINED TENSORRT_LIBS)
     find_library(NVONNXPARSER NAMES nvonnxparser)
 endif()
 
-if(NOT DEFINED LIBCONFIG_LIBS)
-    message(WARNING "-DLIBCONFIG_LIBS não foi utilizada..")
-    find_library(LIBCONFIGCPP config++)
+if(NOT DEFINED YAMLCPP_LIBS)
+    message(WARNING "-YAMLCPP_LIBS não foi utilizada..")
+    find_library(YAMLCPP yaml-cpp)
 endif()
 
 if(NVINFER AND NVINFERPLUGIN AND NVPARSERS AND NVONNXPARSER)
     list(APPEND TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser)
 endif()
 
-message("Libraries: "${OpenCV_LIBS} ${TENSORRT_LIBS} ${LIBCONFIGCPP})
+find_package(Threads REQUIRED)
+
+message("Libraries: "${OpenCV_LIBS} ${TENSORRT_LIBS} ${YAMLCPP} ${CMAKE_THREAD_LIBS_INIT})
 
 set(OUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
@@ -104,7 +156,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUT_DIRECTORY})
 
 file(MAKE_DIRECTORY ${OUT_DIRECTORY})
 
-set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS} ${LIBCONFIGCPP})
+set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS} ${YAMLCPP} ${CMAKE_THREAD_LIBS_INIT})
 
 #cuda_add_library(yololayer SHARED src/yololayer.cu)
 #set_target_properties(yololayer PROPERTIES PREFIX "")
@@ -120,12 +172,16 @@ cuda_add_library(trafficanalysis SHARED
         src/detect.cpp
         src/tracker.cpp
         src/yololayer.cu
-        src/polygon.cpp
-        )
+        generated/weights.cpp
+        src/core.cpp
+)
 
 add_executable(debug
-        examples/cpp/debug.cpp
+        examples/cpp/example.cpp
+        # examples/cpp/debug.cpp
+        # examples/cpp/debugCore.cpp
         #  debug/main.cpp
+        # src/wrapper.cpp
         )
 
 target_link_libraries(trafficanalysis ${LIB_DEPENDENCIES})
