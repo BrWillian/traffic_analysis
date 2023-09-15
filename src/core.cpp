@@ -45,11 +45,12 @@ void TrafficCore::checkLinePassage(std::vector<Vehicle::Detection>& detections) 
             float line_max_x = std::max(line_point1.x, line_point2.x);
 
             float expected_y = line_slope * vehicle->centroid.x + line_intercept;
+            bool class_permitted = std::find(permittedClasses[i].begin(), permittedClasses[i].end(), vehicle->class_name) != permittedClasses[i].end();
 
             if (vehicle->centroid.x >= line_min_x && vehicle->centroid.x <= line_max_x &&
-                std::abs(vehicle->centroid.y - expected_y) <= this->Margin) {
-                passedLine = true;
+                std::abs(vehicle->centroid.y - expected_y) <= this->Margin && class_permitted) {
                 lineIndex = static_cast<int>(i);
+                passedLine = true;
                 break;
             }
         }
@@ -205,6 +206,9 @@ void TrafficCore::setMargin(int margin) {
 void TrafficCore::setLines(std::vector<std::pair<cv::Point, cv::Point>> lines) {
     this->Lines = std::move(lines);
 }
+void TrafficCore::setpermittedClasses(std::vector<std::vector<std::string>> permittedClasses){
+    this->permittedClasses = std::move(permittedClasses);
+}
 
 void TrafficCore::setIdVehicles(std::vector<Vehicle::Detection> &vehicles) {
     this->trackerDet->update(vehicles);
@@ -220,6 +224,7 @@ void TrafficCore::parseConfig() {
 
     int margem;
     std::vector<std::pair<cv::Point, cv::Point>> lines;
+    std::vector<std::vector<std::string>> permittedclasses;
 
     margem = root["margem"].as<int>();
 
@@ -234,11 +239,29 @@ void TrafficCore::parseConfig() {
         cv::Point pt2_xy(pt2[0].as<int>(), pt2[1].as<int>());
         lines.emplace_back(pt1_xy, pt2_xy);
 
+        std::vector<std::string> classes;
+        YAML::Node classes_node = faixa["classes"];
+        for (const auto& cls : classes_node) {
+            classes.push_back(cls.as<std::string>());
+        }
+        permittedclasses.emplace_back(classes);
+
         std::cout << "Faixa: " << nome << std::endl;
         std::cout << "Ponto 1: (" << pt1[0].as<int>() << ", " << pt1[1].as<int>() << ")" << std::endl;
         std::cout << "Ponto 2: (" << pt2[0].as<int>() << ", " << pt2[1].as<int>() << ")" << std::endl;
+
+        std::cout << "Classes: [";
+        for (size_t i = 0; i<classes.size(); ++i) {
+            std::cout << "\"" << classes[i] << "\"";
+            if (i != classes.size() - 1) {
+                std::cout << ",";
+            }
+        }
+        std::cout << "]";
+
         std::cout << std::endl;
     }
+    setpermittedClasses(permittedclasses);
     setMargin(margem);
     setLines(lines);
 }

@@ -11,6 +11,10 @@
 #include "types.h"
 #include <opencv2/opencv.hpp>
 #include <yaml-cpp/yaml.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
 #include <thread>
 #include <map>
 #include <future>
@@ -29,6 +33,7 @@ public:
     void setIdVehicles(std::vector<Vehicle::Detection>& vehicles);
     void setMargin(int margin);
     void setLines(std::vector<std::pair<cv::Point, cv::Point>> Lines);
+    void setpermittedClasses(std::vector<std::vector<std::string>> permittedClasses);
     void parseConfig();
 
 
@@ -43,6 +48,7 @@ private:
 
     int Margin;
     std::vector<std::pair<cv::Point, cv::Point>> Lines;
+    std::vector<std::vector<std::string>> permittedClasses;
     Vehicle::Detection vehicle{};
 
     static float calculateIntercept(const cv::Point& point, float slope);
