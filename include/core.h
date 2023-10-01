@@ -8,7 +8,7 @@
 #include "yololayer.h"
 #include "detect.h"
 #include "tracker.h"
-#include "types.h"
+#include "../meta/types.h"
 #include <opencv2/opencv.hpp>
 #include <yaml-cpp/yaml.h>
 #include <iostream>
@@ -34,6 +34,7 @@ public:
     void getVehicles(cv::Mat &frame, std::vector<Vehicle::Detection>& detections);
     void getColors(std::vector<Vehicle::Detection>& vehicles, cv::Mat &frame);
     void getplateOcr(std::vector<Vehicle::Detection>& vehicles, cv::Mat &frame);
+    void checkHelmet(std::vector<Vehicle::Detection>& vehicles, cv::Mat &frame);
     void setIdVehicles(std::vector<Vehicle::Detection>& vehicles);
     void setMargin(int margin);
     void setLines(std::vector<std::pair<cv::Point, cv::Point>> Lines);

@@ -273,3 +273,23 @@ void TrafficCore::checkBbox(cv::Rect& bbox, const cv::Mat& frame) {
     int height = std::min(bbox.height, frame.rows - y);
     bbox = (width <= 0 || height <= 0) ? cv::Rect(1,1,1,1) : cv::Rect(x, y, width, height);
 }
+
+void TrafficCore::checkHelmet(std::vector<Vehicle::Detection> &vehicles, cv::Mat &frame) {
+    for(auto & vehicle : vehicles){
+        if(vehicle.class_name == "moto") {
+            cv::Rect r(vehicle.bbox[0], vehicle.bbox[1] - vehicle.bbox[3] * 0.70, vehicle.bbox[2],
+                       vehicle.bbox[3] * 1.70);
+            TrafficCore::checkBbox(r, frame);
+            cv::Mat image_roi = frame(r);
+
+            auto helmets_bike = this->helmetDet->doInference(image_roi);
+            for (const auto &helmet : helmets_bike) {
+                vehicle.without_helmet = !helmet.class_id;
+                if (!helmet.class_id) {
+                    break;
+                }
+            }
+            vehicle.persons_bike = helmets_bike.size();
+        }
+    }
+}
