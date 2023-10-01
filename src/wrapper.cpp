@@ -1,17 +1,21 @@
 #include "../meta/wrapper.h"
+#include <future>
+#include <sstream>
+#include <opencv2/opencv.hpp>
+#include "../generated/version.h"
 
 vehicle_t* CDECL C_vehicleDetect(){
     vehicle_t* objwrapper;
-    TrafficCore *TrafficAnalysis = new TrafficCore();
+    auto *TrafficAnalysis = new TrafficCore();
     TrafficAnalysis->parseConfig();
 
-    std::vector<Vehicle::Detection> *detections = new std::vector<Vehicle::Detection>;
+    auto *detections = new std::vector<Vehicle::Detection>;
 
-    cv::Mat *imageContainer = new cv::Mat();
+    auto *imageContainer = new cv::Mat();
 
     objwrapper = (__typeof__(objwrapper)) malloc(sizeof(*objwrapper));
 
-    objwrapper->TrafficCore = TrafficAnalysis;
+    objwrapper->trafficCore = TrafficAnalysis;
     objwrapper->vehicles = detections;
     objwrapper->image = imageContainer;
 
@@ -22,7 +26,7 @@ void CDECL C_vehicleDetectDestroy(vehicle_t* vh){
     if(vh == nullptr){
         std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
     }
-    delete static_cast<TrafficCore*>(vh->TrafficCore);
+    delete static_cast<TrafficCore*>(vh->trafficCore);
     delete static_cast<std::vector<Vehicle::Detection>*>(vh->vehicles);
     delete static_cast<cv::Mat*>(vh->image);
     free(vh);
@@ -74,22 +78,22 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
     }
 
     try {
-        vh->TrafficCore->getVehicles(*vh->image, *vh->vehicles);
+        vh->trafficCore->getVehicles(*vh->image, *vh->vehicles);
 
-        vh->TrafficCore->checkLinePassage(*vh->vehicles);
+        vh->trafficCore->checkLinePassage(*vh->vehicles);
 
         std::future<void> async_colors = std::async(std::launch::async, [&]() {
-            return vh->TrafficCore->getColors(*vh->vehicles, *vh->image);
+            return vh->trafficCore->getColors(*vh->vehicles, *vh->image);
         });
 
         std::future<void> async_ocr = std::async(std::launch::async, [&]() {
-            return vh->TrafficCore->getplateOcr(*vh->vehicles, *vh->image);
+            return vh->trafficCore->getplateOcr(*vh->vehicles, *vh->image);
         });
 
         async_colors.get();
         async_ocr.get();
 
-        vh->TrafficCore->setIdVehicles(*vh->vehicles);
+        vh->trafficCore->setIdVehicles(*vh->vehicles);
 
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Exception: " << e.what() << std::endl;
@@ -116,22 +120,22 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
     }
 
     try {
-        vh->TrafficCore->getVehicles(img, *vh->vehicles);
+        vh->trafficCore->getVehicles(img, *vh->vehicles);
 
-        vh->TrafficCore->checkLinePassage(*vh->vehicles);
+        vh->trafficCore->checkLinePassage(*vh->vehicles);
 
         std::future<void> async_colors = std::async(std::launch::async, [&]() {
-            return vh->TrafficCore->getColors(*vh->vehicles, img);
+            return vh->trafficCore->getColors(*vh->vehicles, img);
         });
 
         std::future<void> async_ocr = std::async(std::launch::async, [&]() {
-            return vh->TrafficCore->getplateOcr(*vh->vehicles, img);
+            return vh->trafficCore->getplateOcr(*vh->vehicles, img);
         });
 
         async_colors.get();
         async_ocr.get();
 
-        vh->TrafficCore->setIdVehicles(*vh->vehicles);
+        vh->trafficCore->setIdVehicles(*vh->vehicles);
 
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Exception: " << e.what() << std::endl;

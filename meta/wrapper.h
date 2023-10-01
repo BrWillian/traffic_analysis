@@ -2,18 +2,14 @@
 #define WRAPPER_H
 
 #ifdef __cplusplus
-#include <sstream>
-#include <iomanip>
 #include <string>
-#include <future>
 #include <opencv2/opencv.hpp>
 #include "../include/core.h"
-#include "../generated/version.h"
 #endif
 
 #if defined(__GNUC__)
 //  GCC
-#define VEHICLEDETECT_API __attribute__((visibility("default")))
+#define TRAFFICANALISYS_API __attribute__((visibility("default")))
 #define IMPORT
 #define CDECL __attribute__((cdecl))
 #else
@@ -24,34 +20,34 @@
     #pragma warning Unknown dynamic link import/export semantics.
 #endif
 
-
 #ifdef __cplusplus
-extern "C" {
-#endif
-    struct VehicleDetect{
-        TrafficCore *TrafficCore;
-        std::vector<Vehicle::Detection> *vehicles;
-        cv::Mat *image;
-    };
-
-    typedef struct VehicleDetect vehicle_t;
-
-    VEHICLEDETECT_API vehicle_t* C_vehicleDetect();
-
-    VEHICLEDETECT_API void C_vehicleDetectDestroy(vehicle_t* vh);
-
-    VEHICLEDETECT_API const char* C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSize);
-
-    VEHICLEDETECT_API const char* C_getVersion();
-
-    VEHICLEDETECT_API const char* C_getWVersion();
-
-#ifdef __cplusplus
-}
+struct VehicleDetect {
+    TrafficCore* trafficCore;
+    std::vector<Vehicle::Detection>* vehicles;
+    cv::Mat* image;
+};
+#else
+struct VehicleDetect {
+    void* TrafficCore;
+    void* vehicles;
+    void* image;
+};
 #endif
 
+typedef struct VehicleDetect vehicle_t;
+
+TRAFFICANALISYS_API vehicle_t* C_vehicleDetect();
+
+TRAFFICANALISYS_API void C_vehicleDetectDestroy(vehicle_t* vh);
+
+TRAFFICANALISYS_API const char* C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSize);
+
+TRAFFICANALISYS_API const char* C_getVersion();
+
+TRAFFICANALISYS_API const char* C_getWVersion();
+
 #ifdef __cplusplus
-    VEHICLEDETECT_API std::string doInference(vehicle_t* vh, cv::Mat& img);
+TRAFFICANALISYS_API std::string doInference(vehicle_t* vh, cv::Mat& img);
 #endif
 
 #endif // WRAPPER_H
