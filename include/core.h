@@ -18,7 +18,10 @@
 #include <thread>
 #include <map>
 #include <future>
-
+#include "ocr.h"
+#include "plate.h"
+#include "color.h"
+#include "vehicle.h"
 
 class TrafficCore {
 public:

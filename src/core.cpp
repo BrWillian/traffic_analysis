@@ -14,10 +14,10 @@ TrafficCore::TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, D
     this->trackerDet = trackerDet;
 }
 TrafficCore::TrafficCore() {
-    this->vehicleDet = new Detect(MODEL_TYPE_VEHICLE);
-    this->plateDet = new Detect(MODEL_TYPE_PLATE);
-    this->ocrDet = new Detect(MODEL_TYPE_OCR);
-    this->colorCls = new Detect(MODEL_TYPE_COLOR);
+    this->vehicleDet = new VehicleDet();
+    this->plateDet = new PlateDet();
+    this->ocrDet = new OcrDet();
+    this->colorCls = new ColorCls();
     this->trackerDet = new Tracker();
 }
 
@@ -97,8 +97,8 @@ void TrafficCore::getColors(std::vector<Vehicle::Detection>& vehicles, cv::Mat &
             TrafficCore::checkBbox(r, frame);
             cv::Mat image_roi = frame(r);
 
-            int vehicle_color = this->colorCls->doInferenceCls(image_roi);
-            vehicle.color = color_classes[static_cast<int>(vehicle_color)];
+            auto vehicle_color = this->colorCls->doInference(image_roi);
+            vehicle.color = color_classes[static_cast<int>(vehicle_color[0].class_id)];
         }else{
             vehicle.color = color_classes[7];
         }
