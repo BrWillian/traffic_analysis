@@ -13,14 +13,16 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/cudaarithm.hpp>
-#include "meta/logger.hpp"
 #include "yololayer.h"
 #include <fstream>
 #include <string>
 #include <vector>
 #include "utils.h"
 #include <assert.h>
+#include <memory>
 #include "../generated/weights.h"
+#include "../meta/types.h"
+#include "../meta/logger.hpp"
 
 #if defined(__GNUC__)
 //  GCC

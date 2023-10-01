@@ -6,7 +6,6 @@
 #define TRAFFIC_ANALYSIS_CORE_H
 
 #include "yololayer.h"
-#include "detect.h"
 #include "tracker.h"
 #include "../meta/types.h"
 #include <opencv2/opencv.hpp>
@@ -15,9 +14,6 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <thread>
-#include <map>
-#include <future>
 #include "ocr.h"
 #include "plate.h"
 #include "color.h"

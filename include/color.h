@@ -5,8 +5,6 @@
 #ifndef TRAFFIC_ANALYSIS_COLOR_H
 #define TRAFFIC_ANALYSIS_COLOR_H
 #include "detect.h"
-#include <vector>
-#include "../meta/types.h"
 
 class ColorCls : public Detect{
 public:

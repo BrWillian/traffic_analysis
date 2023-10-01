@@ -5,8 +5,6 @@
 #ifndef TRAFFIC_ANALYSIS_HELMET_H
 #define TRAFFIC_ANALYSIS_HELMET_H
 #include "detect.h"
-#include <vector>
-#include "../meta/types.h"
 
 
 class HelmetDet : public Detect {
