@@ -13,11 +13,14 @@ vehicle_t* CDECL C_vehicleDetect(){
 
     auto *imageContainer = new cv::Mat();
 
+    auto *stringResult = new std::stringstream;
+
     objwrapper = (__typeof__(objwrapper)) malloc(sizeof(*objwrapper));
 
     objwrapper->trafficCore = TrafficAnalysis;
     objwrapper->vehicles = detections;
     objwrapper->image = imageContainer;
+    objwrapper->ss = stringResult;
 
     return objwrapper;
 }
@@ -31,38 +34,37 @@ void CDECL C_vehicleDetectDestroy(vehicle_t* vh){
     delete static_cast<cv::Mat*>(vh->image);
     free(vh);
 }
-std::string Serialize(const std::vector<Vehicle::Detection>& res) {
-
-    std::stringstream ss;
-    ss << "{\"detections\": [";
+std::string Serialize(vehicle_t* vh, const std::vector<Vehicle::Detection>& res) {
+    vh->ss->str("");
+    *vh->ss << "{\"detections\": [";
 
     for (size_t i = 0; i < res.size(); ++i) {
-        const Vehicle::Detection& vh = res[i];
-        ss << "{";
-        ss << "\"id\":" << vh.id << ",";
-        ss << "\"ocr\":\"" << vh.ocr << "\",";
-        ss << "\"placa\":" << std::boolalpha << vh.plate << ",";
-        ss << "\"faixa\":" << vh.faixa + 1 << ",";
-        ss << "\"cor\":\"" << vh.color << "\",";
-        ss << "\"classe\":\"" << vh.class_name << "\",";
-        ss << "\"x\":" << vh.bbox[0] << ",";
-        ss << "\"y\":" << vh.bbox[1] << ",";
-        ss << "\"w\":" << vh.bbox[2] << ",";
-        ss << "\"h\":" << vh.bbox[3] << ",";
-        ss << "\"centroid\":{\"x\":" << vh.centroid.x << ",";
-        ss << "\"y\":" << vh.centroid.y << "},";
-        ss << "\"placa_bbox\":{\"x\":" << vh.plate_bbox[0] << ",";
-        ss << "\"y\":" << vh.plate_bbox[1] << ",";
-        ss << "\"w\":" << vh.plate_bbox[2] << ",";
-        ss << "\"h\":" << vh.plate_bbox[3] << "}";
-        ss << "}";
+        const Vehicle::Detection& detection = res[i];
+        *vh->ss << "{";
+        *vh->ss << "\"id\":" << detection.id << ",";
+        *vh->ss << "\"ocr\":\"" << detection.ocr << "\",";
+        *vh->ss << "\"placa\":" << std::boolalpha << detection.plate << ",";
+        *vh->ss << "\"faixa\":" << detection.faixa + 1 << ",";
+        *vh->ss << "\"cor\":\"" << detection.color << "\",";
+        *vh->ss << "\"classe\":\"" << detection.class_name << "\",";
+        *vh->ss << "\"x\":" << detection.bbox[0] << ",";
+        *vh->ss << "\"y\":" << detection.bbox[1] << ",";
+        *vh->ss << "\"w\":" << detection.bbox[2] << ",";
+        *vh->ss << "\"h\":" << detection.bbox[3] << ",";
+        *vh->ss << "\"centroid\":{\"x\":" << detection.centroid.x << ",";
+        *vh->ss << "\"y\":" << detection.centroid.y << "},";
+        *vh->ss << "\"placa_bbox\":{\"x\":" << detection.plate_bbox[0] << ",";
+        *vh->ss << "\"y\":" << detection.plate_bbox[1] << ",";
+        *vh->ss << "\"w\":" << detection.plate_bbox[2] << ",";
+        *vh->ss << "\"h\":" << detection.plate_bbox[3] << "}";
+        *vh->ss << "}";
         if (i != res.size() - 1) {
-            ss << ",";
+            *vh->ss << ",";
         }
     }
 
-    ss << "]}";
-    return ss.str();
+    *vh->ss << "]}";
+    return vh->ss->str();
 }
 const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSize){
     if (vh == nullptr) {
@@ -74,7 +76,7 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
 
     if (vh->image->empty()) {
         std::cerr << "[ERROR] Failed to decode image" << std::endl;
-        return strdup(Serialize({}).c_str());
+        return strdup(Serialize(nullptr, {}).c_str());
     }
 
     try {
@@ -97,10 +99,10 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
 
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Exception: " << e.what() << std::endl;
-        return strdup(Serialize({}).c_str());
+        return strdup(Serialize(nullptr, {}).c_str());
     }
 
-    return strdup(Serialize(*vh->vehicles).c_str());
+    return strdup(Serialize(vh, *vh->vehicles).c_str());
 }
 const char* CDECL C_getVersion(){
     return VERSION "-" GIT_BRANCH "-" GIT_COMMIT_HASH;
@@ -108,7 +110,12 @@ const char* CDECL C_getVersion(){
 const char* CDECL C_getWVersion(){
     return W_VERSION "-" W_HASH;
 }
-
+void CDECL C_loadConfig(vehicle_t* vh){
+    if(vh == nullptr){
+        std::cerr<<"[ERROR] Received invalid pointer"<<std::endl;
+    }
+    vh->trafficCore->parseConfig();
+}
 std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
     if (vh == nullptr) {
         std::cerr << "[ERROR] Received invalid pointer" << std::endl;
@@ -116,7 +123,7 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
 
     if (img.empty()) {
         std::cerr << "[ERROR] Failed to decode image" << std::endl;
-        return strdup(Serialize({}).c_str());
+        return strdup(Serialize(nullptr, {}).c_str());
     }
 
     try {
@@ -139,8 +146,8 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
 
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Exception: " << e.what() << std::endl;
-        return strdup(Serialize({}).c_str());
+        return strdup(Serialize(nullptr, {}).c_str());
     }
 
-    return strdup(Serialize(*vh->vehicles).c_str());
+    return strdup(Serialize(vh, *vh->vehicles).c_str());
 }
