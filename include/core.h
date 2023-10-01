@@ -22,11 +22,12 @@
 #include "plate.h"
 #include "color.h"
 #include "vehicle.h"
+#include "helmet.h"
 
 class TrafficCore {
 public:
     TrafficCore();
-    TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Tracker *trackerDet);
+    TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Detect *HelmetDet, Tracker *trackerDet);
     ~TrafficCore();
 
     void checkLinePassage(std::vector<Vehicle::Detection>& detections);
@@ -46,6 +47,7 @@ private:
     Detect *plateDet;
     Detect *ocrDet;
     Detect *colorCls;
+    Detect *helmetDet;
     Tracker *trackerDet;
 
 

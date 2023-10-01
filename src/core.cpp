@@ -2,11 +2,9 @@
 // Created by willian on 22/08/23.
 //
 
-#include <utility>
-
 #include "include/core.h"
 
-TrafficCore::TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Tracker* trackerDet) {
+TrafficCore::TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Detect *HelmetDet, Tracker* trackerDet) {
     this->vehicleDet = vehicleDet;
     this->plateDet = plateDet;
     this->ocrDet = ocrDet;
@@ -18,6 +16,7 @@ TrafficCore::TrafficCore() {
     this->plateDet = new PlateDet();
     this->ocrDet = new OcrDet();
     this->colorCls = new ColorCls();
+    this->helmetDet = new HelmetDet();
     this->trackerDet = new Tracker();
 }
 
@@ -26,6 +25,7 @@ TrafficCore::~TrafficCore() {
     delete this->plateDet;
     delete this->ocrDet;
     delete this->colorCls;
+    delete this->helmetDet;
     delete this->trackerDet;
 }
 
