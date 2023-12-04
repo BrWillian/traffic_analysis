@@ -141,7 +141,7 @@ std::string TrafficCore::getOcr(std::vector<Yolo::Detection> &plates, cv::Mat &p
         r.height += r.height * (2 / 1.5);
         r.height = std::min(r.height, frame.rows - r.y);
         r.width = std::min(r.width, frame.cols - r.x);
-        TrafficCore::checkBbox(r, frame);
+        TrafficCore::checkBbox(r, plate);
         cv::Mat image_roi = plate(r);
 
         std::vector<Yolo::Detection> chars = this->ocrDet->doInference(image_roi);
