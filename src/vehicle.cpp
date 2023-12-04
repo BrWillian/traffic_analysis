@@ -5,8 +5,8 @@
 #include "include/vehicle.h"
 
 VehicleDet::VehicleDet() {
-    this->inputH = 320;
-    this->inputW = 320;
+    this->inputH = 640;
+    this->inputW = 640;
     this->numClasses = 6;
     this->confThresh = 0.5;
     this->nmsThresh = 0.4;
