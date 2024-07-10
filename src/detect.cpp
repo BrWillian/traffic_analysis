@@ -91,7 +91,7 @@ std::vector<float> Detect::softmax(float *output_buffer, int n) {
     return res;
 }
 int Detect::getClasse(std::vector<float> &res, int n) {
-    float maxScore = -1.0f;
+    float maxScore = this->confThresh;
     int maxIndex = -1;
     for (int i = 0; i < n; ++i) {
         if (res[i] > maxScore) {

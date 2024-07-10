@@ -47,18 +47,16 @@ std::string Serialize(vehicle_t* vh, const std::vector<Vehicle::Detection>& res)
         *vh->ss << "\"faixa\":" << detection.faixa + 1 << ",";
         *vh->ss << "\"cor\":\"" << detection.color << "\",";
         *vh->ss << "\"classe\":\"" << detection.class_name << "\",";
-        *vh->ss << "\"x\":" << detection.bbox[0] << ",";
+        *vh->ss << "\"veiculo_bbox\":{\"x\":" << detection.bbox[0] << ",";
         *vh->ss << "\"y\":" << detection.bbox[1] << ",";
         *vh->ss << "\"w\":" << detection.bbox[2] << ",";
-        *vh->ss << "\"h\":" << detection.bbox[3] << ",";
-        *vh->ss << "\"centroid\":{\"x\":" << detection.centroid.x << ",";
-        *vh->ss << "\"y\":" << detection.centroid.y << "},";
+        *vh->ss << "\"h\":" << detection.bbox[3] << "},";
         *vh->ss << "\"placa_bbox\":{\"x\":" << detection.plate_bbox[0] << ",";
         *vh->ss << "\"y\":" << detection.plate_bbox[1] << ",";
         *vh->ss << "\"w\":" << detection.plate_bbox[2] << ",";
         *vh->ss << "\"h\":" << detection.plate_bbox[3] << "},";
-        *vh->ss << "\"qtd_ps_moto\":" << detection.persons_bike << ",";
-        *vh->ss << "\"sem_cpct\":" << std::boolalpha << detection.without_helmet;
+        *vh->ss << "\"marca_modelo_id\":" << detection.brand_model_id << ",";
+        *vh->ss << "\"marca_modelo\":\"" << detection.brand_model << "\"";
         *vh->ss << "}";
         if (i != res.size() - 1) {
             *vh->ss << ",";
@@ -94,13 +92,13 @@ const char* CDECL C_doInference(vehicle_t* vh, unsigned char* imgData, int imgSi
             return vh->trafficCore->getplateOcr(*vh->vehicles, *vh->image);
         });
 
-        std::future<void> async_helmet = std::async(std::launch::async, [&]() {
-            return vh->trafficCore->checkHelmet(*vh->vehicles, *vh->image);
+        std::future<void> async_brand = std::async(std::launch::async, [&]() {
+            return vh->trafficCore->getBrands(*vh->vehicles, *vh->image);
         });
 
         async_colors.get();
         async_ocr.get();
-        async_helmet.get();
+        async_brand.get();
 
         vh->trafficCore->setIdVehicles(*vh->vehicles);
 
@@ -146,13 +144,13 @@ std::string CDECL doInference(vehicle_t* vh, cv::Mat& img){
             return vh->trafficCore->getplateOcr(*vh->vehicles, img);
         });
 
-        std::future<void> async_helmet = std::async(std::launch::async, [&]() {
-            return vh->trafficCore->checkHelmet(*vh->vehicles, *vh->image);
+        std::future<void> async_brand = std::async(std::launch::async, [&]() {
+            return vh->trafficCore->getBrands(*vh->vehicles, *vh->image);
         });
 
         async_colors.get();
         async_ocr.get();
-        async_helmet.get();
+        async_brand.get();
 
         vh->trafficCore->setIdVehicles(*vh->vehicles);
 

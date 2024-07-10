@@ -8,8 +8,7 @@ ColorCls::ColorCls() {
     this->inputH = 224;
     this->inputW = 224;
     this->numClasses = 7;
-    this->confThresh = 0.5;
-    this->nmsThresh = 0.4;
+    this->confThresh = 0.001;
 
     createContextExecution();
 }
@@ -46,9 +45,9 @@ std::vector<Yolo::Detection> ColorCls::doInference(cv::Mat &img) {
 
     result.emplace_back(
             Yolo::Detection{
-                {0,0,0,0},
-                0,
-                float(idx)}
+                    {0,0,0,0},
+                    0,
+                    float(idx)}
     );
 
     return result;
