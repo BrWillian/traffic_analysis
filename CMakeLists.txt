@@ -83,8 +83,8 @@ execute_process(
 
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
-        COMMAND xxd -i helmet.engine
-        OUTPUT_VARIABLE HELMET_WEIGHTS
+        COMMAND xxd -i brand.engine
+        OUTPUT_VARIABLE BRAND_WEIGHTS
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
@@ -126,7 +126,7 @@ execute_process(
 )
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
-        COMMAND rm helmet.engine
+        COMMAND rm brand.engine
 )
 
 find_package(CUDA 10.2 REQUIRED)
@@ -181,7 +181,7 @@ cuda_add_library(trafficanalysis SHARED
         src/color.cpp
         src/plate.cpp
         src/vehicle.cpp
-        src/helmet.cpp
+        src/brand.cpp
 )
 
 add_executable(debug

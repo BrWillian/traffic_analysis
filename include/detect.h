@@ -101,7 +101,7 @@ protected:
 
     // CLASSIFICATION METHODS
     static std::vector<float> softmax(float *output_buffer, int n);
-    static int getClasse(std::vector<float> &res, int n);
+    int getClasse(std::vector<float> &res, int n);
     static std::vector<int> topk(const std::vector<float>& vec, int k);
 };
 
