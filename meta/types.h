@@ -23,8 +23,8 @@ namespace Vehicle
         int plate_bbox[4];
         std::string ocr;
         std::string color;
-        bool without_helmet;
-        int persons_bike;
+        int brand_model_id;
+        std::string brand_model;
     };
 }
 
