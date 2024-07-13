@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 #include "yololayer.h"
-#include "types.h"
+#include "../meta/types.h"
 
 class Tracker {
 public:

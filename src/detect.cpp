@@ -1,174 +1,11 @@
 #include "../include/detect.h"
 
-Detect::Detect()
-{
-    cudaSetDevice(0);
-    this->outputSize = 1000 * sizeof(Yolo::Detection) / sizeof(float) + 1;
-    this->maxInputSize = 1920*1080;
-    this->outputBlobName = "output";
-    this->inputBlobName = "images";
-    this->confThresh = 0.1;
-    this->nmsThresh = 0.1;
-    this->batchSize = 1;
-    this->inputH = 640;
-    this->inputW = 640;
-    this->numClasses = 6;
-
-    createContextExecution();
-}
-
-Detect::Detect(uint32_t modelType) {
-    cudaSetDevice(0);
-    this->maxInputSize = 1920*1080;
-    this->outputBlobName = "output";
-    this->inputBlobName = "images";
-    this->confThresh = 0.5;
-    this->nmsThresh = 0.4;
-    this->batchSize = 1;
-    this->modelType = modelType;
-
-    switch(modelType){
-        case MODEL_TYPE_VEHICLE:
-            this->outputSize = 50 * sizeof(Yolo::Detection) / sizeof(float) + 1;
-            this->inputH = 320;
-            this->inputW = 320;
-            this->numClasses = 6;
-            break;
-        case MODEL_TYPE_PLATE:
-            this->outputSize = 10 * sizeof(Yolo::Detection) / sizeof(float) + 1;
-            this->inputH = 320;
-            this->inputW = 320;
-            this->numClasses = 1;
-            break;
-        case MODEL_TYPE_OCR:
-            this->outputSize = 300 * sizeof(Yolo::Detection) / sizeof(float) + 1;
-            this->inputH = 320;
-            this->inputW = 320;
-            this->numClasses = 36;
-            this->confThresh = 0.002;
-            this->nmsThresh = 0.8;
-            break;
-        case MODEL_TYPE_COLOR:
-            this->numClasses = 7;
-            this->outputSize = this->numClasses;
-            this->inputW = 224;
-            this->inputH = 224;
-        }
-
-    createContextExecution();
-}
-
 Detect::~Detect(){
     this->runtime.reset(nullptr);
     this->context.reset(nullptr);
     this->engine.reset(nullptr);
     CUDA_CHECK(cudaFree(buffers[inputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
-}
-void Detect::preprocessImage(const cv::Mat &img, float *imgBufferArray) const{
-
-    float r_w = inputW / (img.cols*1.0);
-    float r_h = inputH / (img.rows*1.0);
-    cv::Rect roi;
-    if (r_h > r_w) {
-        roi.width = inputW;
-        roi.height = r_w * img.rows;
-        roi.x = 0;
-        roi.y = (inputH - roi.height) / 2;
-    } else {
-        roi.width = r_h* img.cols;
-        roi.height = inputH;
-        roi.x = (inputW - roi.width) / 2;
-        roi.y = 0;
-    }
-    cv::Mat out(inputH, inputW, CV_8UC3, cv::Scalar(128, 128, 128));
-    cv::resize(img, out(roi), roi.size(), cv::INTER_LINEAR);
-
-    int i = 0;
-    for (int row = 0; row < inputH; ++row) {
-        uchar* uc_pixel = out.data + row * out.step;
-        for (int col = 0; col < inputW; ++col) {
-            imgBufferArray[i] = (float)uc_pixel[2] / 255.0;
-            imgBufferArray[i + inputH * inputW] = (float)uc_pixel[1] / 255.0;
-            imgBufferArray[i + 2 * inputH * inputW] = (float)uc_pixel[0] / 255.0;
-            uc_pixel += 3;
-            ++i;
-        }
-    }
-}
-void Detect::preprocessImageCls(const cv::Mat &img, float *imgBufferArray) const {
-    cv::Mat resized(inputH, inputW, CV_8UC3);
-    cv::resize(img, resized, resized.size(), cv::INTER_LINEAR);
-
-    int i = 0;
-    for (int row = 0; row < inputH; ++row) {
-        uchar* uc_pixel = resized.data + row * resized.step;
-        for (int col = 0; col < inputW; ++col) {
-            imgBufferArray[i] = (float)uc_pixel[2] / 255.0;
-            imgBufferArray[i + inputH * inputW] = (float)uc_pixel[1] / 255.0;
-            imgBufferArray[i + 2 * inputH * inputW] = (float)uc_pixel[0] / 255.0;
-            uc_pixel += 3;
-            ++i;
-        }
-    }
-};
-
-void Detect::createContextExecution(){
-    this->runtime = static_cast<std::unique_ptr<nvinfer1::IRuntime, TRTDelete>>(std::move(nvinfer1::createInferRuntime(gLogger)));
-
-    this->imgBuffer = new float[batchSize * 3 * inputH * inputW];
-    this->outputBuffer = new float[batchSize * outputSize];
-
-    switch(this->modelType){
-        case MODEL_TYPE_VEHICLE:
-            this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(vehicle_engine, vehicle_engine_len)));
-            break;
-        case MODEL_TYPE_PLATE:
-            this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(plate_engine, plate_engine_len)));
-            break;
-        case MODEL_TYPE_OCR:
-            this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(ocr_engine, ocr_engine_len)));
-            break;
-        case MODEL_TYPE_COLOR:
-            this->engine = static_cast<std::unique_ptr<nvinfer1::ICudaEngine, TRTDelete>>(std::move(runtime->deserializeCudaEngine(color_engine, color_engine_len)));
-            break;
-    }
-    this->context = static_cast<std::unique_ptr<nvinfer1::IExecutionContext, TRTDelete>>(std::move(engine->createExecutionContext()));
-    
-    this->inputIndex = engine->getBindingIndex(inputBlobName);
-    this->outputIndex = engine->getBindingIndex(outputBlobName);
-    
-    this->buffers = std::vector<void *>(engine->getNbBindings());
-    CUDA_CHECK(cudaMalloc(&buffers[inputIndex], batchSize * 3 * inputH * inputW * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&buffers[outputIndex], batchSize * outputSize * sizeof(float)));
-}
-
-std::vector<Yolo::Detection> Detect::doInference(cv::Mat &img){
-    if (this->modelType == MODEL_TYPE_COLOR) {
-        std::cerr<<"[ERROR] Invalid model type."<<std::endl;
-        return std::vector<Yolo::Detection>{};
-    }
-    std::vector<Yolo::Detection> result{};
-
-    preprocessImage(img, imgBuffer);
-
-    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float),
-                               cudaMemcpyHostToDevice, nullptr));
-
-    context->enqueue(batchSize, buffers.data(), nullptr, nullptr);
-    CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, nullptr));
-
-    nms(result, outputBuffer);
-
-    for(auto &it: result){
-        cv::Rect r = getRect(img, it.bbox);
-        it.bbox[0] = r.x;
-        it.bbox[1] = r.y;
-        it.bbox[2] = r.width;
-        it.bbox[3] = r.height;
-    }
-
-    return result;
 }
 float Detect::iou(float lbox[4], float rbox[4]){
     float interBox[] = {
@@ -212,7 +49,7 @@ void Detect::nms(std::vector<Yolo::Detection>& res, float *output) const{
 bool Detect::cmp(const Yolo::Detection& a, const Yolo::Detection& b) {
     return a.conf > b.conf;
 }
-cv::Rect Detect::getRect(cv::Mat &img, float bbox[4]){
+cv::Rect Detect::getRect(cv::Mat &img, float bbox[4]) const {
     float l, r, t, b;
     float r_w = inputW / (img.cols * 1.0);
     float r_h = inputH / (img.rows * 1.0);
@@ -254,7 +91,7 @@ std::vector<float> Detect::softmax(float *output_buffer, int n) {
     return res;
 }
 int Detect::getClasse(std::vector<float> &res, int n) {
-    float maxScore = -1.0f;
+    float maxScore = this->confThresh;
     int maxIndex = -1;
     for (int i = 0; i < n; ++i) {
         if (res[i] > maxScore) {
@@ -279,22 +116,4 @@ std::vector<int> Detect::topk(const std::vector<float>& vec, int k) {
     }
 
     return topk_index;
-}
-int Detect::doInferenceCls(cv::Mat &img){
-    if (this->modelType != MODEL_TYPE_COLOR) {
-        std::cerr<<"[ERROR] Invalid model type."<<std::endl;
-        return 7;
-    }
-
-    preprocessImageCls(img, imgBuffer);
-
-    CUDA_CHECK(cudaMemcpyAsync(buffers[inputIndex], imgBuffer, batchSize * 3 * inputH * inputW * sizeof(float), cudaMemcpyHostToDevice, nullptr));
-    context->enqueue(batchSize, buffers.data(), nullptr, nullptr);
-    CUDA_CHECK(cudaMemcpyAsync(outputBuffer, buffers[outputIndex], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, nullptr));
-
-    std::vector<float> output_model = this->softmax(outputBuffer, this->outputSize);
-    //std::vector<int> idxs = this->topk(output_model, 1);
-    int idx = this->getClasse(output_model, this->outputSize);
-
-    return idx;
 }

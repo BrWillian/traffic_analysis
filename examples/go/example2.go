@@ -41,6 +41,9 @@ func VehicleDetectConstruct() VehicleDetect {
 func VehicleDetectDestroy(vh VehicleDetect) {
 	C.C_vehicleDetectDestroy(vh.ptr)
 }
+func VehicleLoadConfig(vh VehicleDetect){
+	C.C_loadConfig(vh.ptr)
+}
 func VehicleDetectInference(vh VehicleDetect, img image.Image) string {
 	buf := new(bytes.Buffer)
 	_ = jpeg.Encode(buf, img, nil)
@@ -65,23 +68,25 @@ func main() {
 	pointer := VehicleDetectConstruct()
 	fmt.Println(pointer)
 
-	files, err := ioutil.ReadDir("/root/imagem/")
+	files, err := ioutil.ReadDir("/home/willian/Downloads/imagem/")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, file := range files {
 
-		img, _ := getImageFromFilePath("/root/imagem/" + file.Name())
+		img, _ := getImageFromFilePath("/home/willian/Downloads/imagem/" + file.Name())
+		
+		fmt.Println(file.Name())
 
 		start := time.Now()
 
 		result := VehicleDetectInference(pointer, img)
 
-		fmt.Println(result)
-
 		duration := time.Since(start)
-
+		
+		fmt.Println(result)
+		
 		fmt.Printf("Time: %d ms\n", duration.Milliseconds())
 	}
 

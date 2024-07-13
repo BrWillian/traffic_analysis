@@ -13,14 +13,16 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/cudaarithm.hpp>
-#include "logger.hpp"
 #include "yololayer.h"
 #include <fstream>
 #include <string>
 #include <vector>
 #include "utils.h"
 #include <assert.h>
+#include <memory>
 #include "../generated/weights.h"
+#include "../meta/types.h"
+#include "../meta/logger.hpp"
 
 #if defined(__GNUC__)
 //  GCC
@@ -35,10 +37,6 @@
     #pragma warning Unknown dynamic link import/export semantics.
 #endif
 
-#define MODEL_TYPE_VEHICLE     (0x00000000)
-#define MODEL_TYPE_PLATE       (0x00000001)
-#define MODEL_TYPE_OCR         (0x00000002)
-#define MODEL_TYPE_COLOR       (0x00000003)
 
 using namespace nvinfer1;
 REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
@@ -47,26 +45,35 @@ static Logger gLogger;
 
 class Detect
 {
-private:
+public:
+    Detect() = default;
+    ~Detect();
 
-    uint8_t batchSize{};
-    uint8_t numClasses{};
-    uint32_t outputSize{};
-    uint16_t inputH{};
-    uint16_t inputW{};
-    uint32_t maxInputSize{};
-    const char* inputBlobName{};
-    const char* outputBlobName{};
+    virtual std::vector<Yolo::Detection> doInference(cv::Mat& img) = 0;
+
+protected:
+    static constexpr uint8_t batchSize = 1;
+    static constexpr char* inputBlobName = "images";
+    static constexpr char* outputBlobName = "output";
+    static constexpr uint32_t outputSize = 100 * sizeof(Yolo::Detection) / sizeof(float) + 1;
+
     float nmsThresh{};
     float confThresh{};
+    uint16_t inputH{};
+    uint16_t inputW{};
+    uint8_t numClasses{};
 
+    float r_w{};
+    float r_h{};
+    cv::Rect roi{};
+    cv::Mat out{};
+    std::vector<Yolo::Detection> result{};
 
     float *imgBuffer{};
     float *outputBuffer{};
     std::vector<void *> buffers{};
     uint8_t inputIndex{};
     uint8_t outputIndex{};
-    uint32_t modelType{};
 
     struct TRTDelete{
         template<class T>
@@ -83,29 +90,19 @@ private:
     TRTptr<nvinfer1::ICudaEngine> engine{nullptr};
     TRTptr<nvinfer1::IExecutionContext> context{nullptr};
 
-protected:
-    void preprocessImage(const cv::Mat& img, float* imgBufferArray) const;
-    void preprocessImageCls(const cv::Mat& img, float* imgBufferArray) const;
-    void createContextExecution();
+    virtual void preprocessImage(const cv::Mat& img, float* imgBufferArray) = 0;
+    virtual void createContextExecution() = 0;
 
     // OBJECT DETECTION METHODS
     static float iou(float lbox[4], float rbox[4]);
     void nms(std::vector<Yolo::Detection>& res, float *output) const;
     static bool cmp(const Yolo::Detection& a, const Yolo::Detection& b);
-    cv::Rect getRect(cv::Mat& img, float bbox[4]);
+    cv::Rect getRect(cv::Mat& img, float bbox[4]) const;
 
     // CLASSIFICATION METHODS
     static std::vector<float> softmax(float *output_buffer, int n);
-    static int getClasse(std::vector<float> &res, int n);
+    int getClasse(std::vector<float> &res, int n);
     static std::vector<int> topk(const std::vector<float>& vec, int k);
-
-public:
-    Detect();
-    Detect(uint32_t modelType);
-    ~Detect();
-
-    std::vector<Yolo::Detection> doInference(cv::Mat& img);
-    int doInferenceCls(cv::Mat& img);
 };
 
 

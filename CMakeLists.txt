@@ -50,7 +50,7 @@ message(STATUS "Generating weights.cpp")
 
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
-        COMMAND tar xf weights.tar.gz
+        COMMAND unzip weights.zip
 )
 
 execute_process(
@@ -80,12 +80,20 @@ execute_process(
         OUTPUT_VARIABLE COLOR_WEIGHTS
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND xxd -i brand.engine
+        OUTPUT_VARIABLE BRAND_WEIGHTS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/meta/weights.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/generated/weights.cpp
 )
 
-message(STATUS "Generating weights.h")
+message(STATUS "Generating weights.cpp")
 
 execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/generated/
@@ -116,6 +124,10 @@ execute_process(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
         COMMAND rm color.engine
 )
+execute_process(
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/meta/
+        COMMAND rm brand.engine
+)
 
 find_package(CUDA 10.2 REQUIRED)
 
@@ -141,7 +153,7 @@ if(NOT DEFINED YAMLCPP_LIBS)
 endif()
 
 if(NVINFER AND NVINFERPLUGIN AND NVPARSERS AND NVONNXPARSER)
-    list(APPEND TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser)
+    list(APPEND TENSORRT_LIBS ${NVINFER} ${NVINFERPLUGIN} ${NVPARSERS} ${NVONNXPARSER})
 endif()
 
 find_package(Threads REQUIRED)
@@ -158,15 +170,6 @@ file(MAKE_DIRECTORY ${OUT_DIRECTORY})
 
 set (LIB_DEPENDENCIES ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${TENSORRT_LIBS} ${YAMLCPP} ${CMAKE_THREAD_LIBS_INIT})
 
-#cuda_add_library(yololayer SHARED src/yololayer.cu)
-#set_target_properties(yololayer PROPERTIES PREFIX "")
-
-#add_library(tracker SHARED src/tracker.cpp)
-#set_target_properties(tracker PROPERTIES PREFIX "")
-
-#add_library(polygon SHARED src/polygon.cpp)
-#set_target_properties(polygon PROPERTIES PREFIX "")
-
 cuda_add_library(trafficanalysis SHARED
         src/wrapper.cpp
         src/detect.cpp
@@ -174,14 +177,18 @@ cuda_add_library(trafficanalysis SHARED
         src/yololayer.cu
         generated/weights.cpp
         src/core.cpp
+        src/ocr.cpp
+        src/color.cpp
+        src/plate.cpp
+        src/vehicle.cpp
+        src/brand.cpp
 )
 
 add_executable(debug
         examples/cpp/example.cpp
         # examples/cpp/debug.cpp
         # examples/cpp/debugCore.cpp
-        #  debug/main.cpp
-        # src/wrapper.cpp
+        # examples/cpp/saveImage.cpp
         )
 
 target_link_libraries(trafficanalysis ${LIB_DEPENDENCIES})

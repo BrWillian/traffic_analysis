@@ -2,22 +2,22 @@
 // Created by willian on 22/08/23.
 //
 
-#include <utility>
-
 #include "include/core.h"
 
-TrafficCore::TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Tracker* trackerDet) {
+TrafficCore::TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Detect *brandCls, Tracker* trackerDet) {
     this->vehicleDet = vehicleDet;
     this->plateDet = plateDet;
     this->ocrDet = ocrDet;
     this->colorCls = colorCls;
+    this->brandCls = brandCls;
     this->trackerDet = trackerDet;
 }
 TrafficCore::TrafficCore() {
-    this->vehicleDet = new Detect(MODEL_TYPE_VEHICLE);
-    this->plateDet = new Detect(MODEL_TYPE_PLATE);
-    this->ocrDet = new Detect(MODEL_TYPE_OCR);
-    this->colorCls = new Detect(MODEL_TYPE_COLOR);
+    this->vehicleDet = new VehicleDet();
+    this->plateDet = new PlateDet();
+    this->ocrDet = new OcrDet();
+    this->colorCls = new ColorCls();
+    this->brandCls = new BrandCls();
     this->trackerDet = new Tracker();
 }
 
@@ -26,6 +26,7 @@ TrafficCore::~TrafficCore() {
     delete this->plateDet;
     delete this->ocrDet;
     delete this->colorCls;
+    delete this->brandCls;
     delete this->trackerDet;
 }
 
@@ -92,15 +93,14 @@ void TrafficCore::getVehicles(cv::Mat &frame, std::vector<Vehicle::Detection>& d
 
 void TrafficCore::getColors(std::vector<Vehicle::Detection>& vehicles, cv::Mat &frame) {
     for(auto & vehicle : vehicles){
+        vehicle.color = "desconhecida";
         if(vehicle.class_name != "moto" && vehicle.class_name != "caminhao" && vehicle.class_name != "onibus") {
             cv::Rect r(vehicle.bbox[0], vehicle.bbox[1], vehicle.bbox[2], vehicle.bbox[3]);
             TrafficCore::checkBbox(r, frame);
             cv::Mat image_roi = frame(r);
 
-            int vehicle_color = this->colorCls->doInferenceCls(image_roi);
-            vehicle.color = color_classes[static_cast<int>(vehicle_color)];
-        }else{
-            vehicle.color = color_classes[7];
+            auto vehicle_color = this->colorCls->doInference(image_roi);
+            vehicle.color = color_classes[static_cast<int>(vehicle_color[0].class_id + 1)];
         }
     }
 }
@@ -141,7 +141,7 @@ std::string TrafficCore::getOcr(std::vector<Yolo::Detection> &plates, cv::Mat &p
         r.height += r.height * (2 / 1.5);
         r.height = std::min(r.height, frame.rows - r.y);
         r.width = std::min(r.width, frame.cols - r.x);
-        TrafficCore::checkBbox(r, frame);
+        TrafficCore::checkBbox(r, plate);
         cv::Mat image_roi = plate(r);
 
         std::vector<Yolo::Detection> chars = this->ocrDet->doInference(image_roi);
@@ -272,4 +272,19 @@ void TrafficCore::checkBbox(cv::Rect& bbox, const cv::Mat& frame) {
     int width = std::min(bbox.width, frame.cols - x);
     int height = std::min(bbox.height, frame.rows - y);
     bbox = (width <= 0 || height <= 0) ? cv::Rect(1,1,1,1) : cv::Rect(x, y, width, height);
+}
+
+void TrafficCore::getBrands(std::vector<Vehicle::Detection> &vehicles, cv::Mat &frame) {
+    for(auto & vehicle : vehicles){
+        vehicle.brand_model = "desconhecido";
+        if(vehicle.class_name != "moto" && vehicle.class_name != "caminhao" && vehicle.class_name != "onibus" && vehicle.class_name != "van") {
+            cv::Rect r(vehicle.bbox[0], vehicle.bbox[1], vehicle.bbox[2], vehicle.bbox[3]);
+            TrafficCore::checkBbox(r, frame);
+            cv::Mat image_roi = frame(r);
+
+            auto vehicle_brand = this->brandCls->doInference(image_roi);
+            vehicle.brand_model_id = static_cast<int>(vehicle_brand[0].class_id + 1);
+            vehicle.brand_model = vehicle_brands[static_cast<int>(vehicle_brand[0].class_id + 1)];
+        }
+    }
 }
