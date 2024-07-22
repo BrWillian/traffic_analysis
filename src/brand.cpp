@@ -8,7 +8,7 @@ BrandCls::BrandCls() {
     this->inputH = 224;
     this->inputW = 224;
     this->numClasses = 43;
-    this->confThresh = 0.50;
+    this->confThresh = 0.1;
 
     createContextExecution();
 }
