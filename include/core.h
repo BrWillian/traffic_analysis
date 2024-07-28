@@ -52,6 +52,7 @@ public:
 
     // Check Vehicle Stopping
     void checkPolyInside(std::vector<Vehicle::Detection>& detections);
+    bool isVehicleInPolygon(const std::vector<cv::Point>& polygon,  const Vehicle::Detection& vehicle);
 
 
 
@@ -66,7 +67,7 @@ private:
 
 
     int Margin;
-    std::vector<std::vector<cv::Point>> polygons;
+    std::vector<std::vector<cv::Point>> Polygons;
     int stopTime;
     std::vector<std::pair<cv::Point, cv::Point>> Lines;
     std::vector<std::vector<std::string>> permittedClasses;

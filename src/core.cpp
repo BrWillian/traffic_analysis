@@ -30,8 +30,7 @@ TrafficCore::~TrafficCore() {
     delete this->trackerDet;
 }
 
-void TrafficCore::
-checkLinePassage(std::vector<Vehicle::Detection>& detections) {
+void TrafficCore::checkLinePassage(std::vector<Vehicle::Detection>& detections) {
     for (auto vehicle = detections.begin(); vehicle != detections.end(); vehicle++) {
         bool passedLine = false;
         int lineIndex = -1;
@@ -57,8 +56,8 @@ checkLinePassage(std::vector<Vehicle::Detection>& detections) {
             }
         }
 
-        vehicle->faixa = static_cast<int>(lineIndex);
-        vehicle->passedLine = passedLine;
+        vehicle->strip = static_cast<int>(lineIndex);
+        vehicle->track_strip = passedLine;
 
 //        if (!passedLine) {
 //            vehicle = detections.erase(vehicle);
@@ -212,7 +211,7 @@ void TrafficCore::setpermittedClasses(std::vector<std::vector<std::string>> perm
     this->permittedClasses = std::move(permittedClasses);
 }
 void TrafficCore::setPolygons(std::vector<std::vector<cv::Point>> polygons) {
-    this->polygons = std::move(polygons);
+    this->Polygons = std::move(polygons);
 }
 void TrafficCore::setStopTime(int time) {
     this->stopTime = time;
@@ -234,14 +233,14 @@ void TrafficCore::getTriggeds(std::vector<Vehicle::Detection> &vehicles) {
     }
 
     for (auto &it: vehicles) {
-        if(it.passedLine && !this->vehiclesTrigger[it.id].entry_time_set){
+        if(it.track_strip && !this->vehiclesTrigger[it.id].entry_time_set){
             this->vehiclesTrigger[it.id] = it;
             this->vehiclesTrigger[it.id].entry_time = std::chrono::steady_clock::now();
             this->vehiclesTrigger[it.id].entry_time_set = true;
             this->vehiclesTrigger[it.id].is_in_trigger = true;
         }
 
-        if(it.passedLine && this->vehiclesTrigger[it.id].is_in_trigger){
+        if(it.track_strip && this->vehiclesTrigger[it.id].is_in_trigger){
             this->vehiclesTrigger[it.id].bbox[0] = it.bbox[0];
             this->vehiclesTrigger[it.id].bbox[1] = it.bbox[1];
             this->vehiclesTrigger[it.id].bbox[2] = it.bbox[2];
@@ -249,7 +248,7 @@ void TrafficCore::getTriggeds(std::vector<Vehicle::Detection> &vehicles) {
             this->vehiclesTrigger[it.id].exit_time = std::chrono::steady_clock::now();
         }
 
-        if(!it.passedLine && this->vehiclesTrigger[it.id].is_in_trigger){
+        if(!it.track_strip && this->vehiclesTrigger[it.id].is_in_trigger){
             this->vehiclesTrigger[it.id].bbox[0] = it.bbox[0];
             this->vehiclesTrigger[it.id].bbox[1] = it.bbox[1];
             this->vehiclesTrigger[it.id].bbox[2] = it.bbox[2];
@@ -364,5 +363,39 @@ void TrafficCore::getBrands(std::vector<Vehicle::Detection> &vehicles, cv::Mat &
 }
 
 void TrafficCore::checkPolyInside(std::vector<Vehicle::Detection> &detections) {
+    for (auto vehicle = detections.begin(); vehicle != detections.end(); vehicle++) {
+        bool insidePolygon = false;
+        int polygonIndex = -1;
 
+        for (size_t i = 0; i < this->Polygons.size(); ++i) {
+            const auto& polygon = this->Polygons[i];
+
+            if (isVehicleInPolygon(polygon, *vehicle)) {
+                polygonIndex = static_cast<int>(i);
+                insidePolygon = true;
+                break;
+            }
+        }
+
+        vehicle->stopping_index = static_cast<int>(polygonIndex);
+        vehicle->stopping_trigger = insidePolygon;
+    }
+}
+
+bool TrafficCore::isVehicleInPolygon(const std::vector<cv::Point> &polygon, const Vehicle::Detection& vehicle) {
+    int vertex = polygon.size();
+    int count = 0;
+
+    for (int i = 0; i < vertex; i++) {
+        cv::Point p1 = polygon[i];
+        cv::Point p2 = polygon[(i + 1) % vertex];
+
+        if ((vehicle.centroid.y > std::min(p1.y, p2.y)) && (vehicle.centroid.y <= std::max(p1.y, p2.y)) && (vehicle.centroid.x <= std::max(p1.x, p2.x))) {
+            double xIntersect = (vehicle.centroid.y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y) + p1.x;
+            if (p1.x == p2.x || vehicle.centroid.x <= xIntersect) {
+                count++;
+            }
+        }
+    }
+    return count % 2 == 1;
 }
