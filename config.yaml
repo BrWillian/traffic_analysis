@@ -3,7 +3,7 @@ faixas:
   - nome: faixa1
     pt1: [40, 350]
     pt2: [530, 340]
-    classes: ["caminhonete"]
+    classes: ["carro"]
   - nome: faixa2
     pt1: [590, 340]
     pt2: [1100, 350]
