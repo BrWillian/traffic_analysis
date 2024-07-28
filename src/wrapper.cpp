@@ -44,7 +44,7 @@ std::string Serialize(vehicle_t* vh, const std::vector<Vehicle::Detection>& res)
         *vh->ss << "\"id\":" << detection.id << ",";
         *vh->ss << "\"ocr\":\"" << detection.ocr << "\",";
         *vh->ss << "\"placa\":" << std::boolalpha << detection.plate << ",";
-        *vh->ss << "\"faixa\":" << detection.faixa + 1 << ",";
+        *vh->ss << "\"faixa\":" << detection.strip + 1 << ",";
         *vh->ss << "\"cor\":\"" << detection.color << "\",";
         *vh->ss << "\"classe\":\"" << detection.class_name << "\",";
         *vh->ss << "\"veiculo_bbox\":{\"x\":" << detection.bbox[0] << ",";

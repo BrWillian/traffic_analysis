@@ -91,12 +91,12 @@ int main(int argc, char *argv[])
                     cv::Mat image_roi = copy_frame(roi);
                     std::cout << "---------------" << std::endl;
 
-                    std::cout << "PASSED: " << it.second.passedLine << std::endl;
+                    std::cout << "PASSED: " << it.second.track_strip << std::endl;
                     std::cout << "ID: " << std::to_string(it.second.id) << std::endl;
                     std::cout << "CLASSE: " << it.second.class_name << std::endl;
                     std::cout << "OCR: " << it.second.ocr << std::endl;
                     std::cout << "COR: " << it.second.color << std::endl;
-                    std::cout << "FAIXA: " << std::to_string(it.second.faixa) << std::endl;
+                    std::cout << "FAIXA: " << std::to_string(it.second.strip) << std::endl;
                     std::cout << "PLACA: " << it.second.plate << std::endl;
                     std::cout << "PLACA_BBOX: " << "x: " << it.second.plate_bbox[0] << "y: " << it.second.plate_bbox[1] << "w: " << it.second.plate_bbox[2] << "h: " << it.second.plate_bbox[3] << std::endl;
                     std::cout << "MARCA_MODELO: " << it.second.brand_model << std::endl;
