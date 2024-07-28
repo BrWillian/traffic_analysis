@@ -18,7 +18,7 @@ namespace Vehicle
         int bbox[4];
         std::string class_name;
         uint16_t id;
-        int faixa;
+        int strip;
         Point centroid;
         bool plate;
         int plate_bbox[4];
@@ -26,14 +26,15 @@ namespace Vehicle
         std::string color;
         int brand_model_id;
         std::string brand_model;
-        bool passedLine = false;
+        bool track_strip = false;
         // Parada e velocidade
         std::chrono::time_point<std::chrono::steady_clock> entry_time; // Horário de entrada no laço
         std::chrono::time_point<std::chrono::steady_clock> exit_time;   // Horário de saída do laço
         bool entry_time_set = false; // Flag para verificar se entry_time foi definido
         bool exit_time_set = false;  // Flag para verificar se exit_time foi definido
         bool is_in_trigger = false;     // Indica se está dentro do trigger
-        bool sent = false;
+        int stopping_index;
+        bool stopping_trigger = false;
     };
 }
 
