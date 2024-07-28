@@ -30,8 +30,9 @@ TrafficCore::~TrafficCore() {
     delete this->trackerDet;
 }
 
-void TrafficCore::checkLinePassage(std::vector<Vehicle::Detection>& detections) {
-    for (auto vehicle = detections.begin(); vehicle != detections.end();) {
+void TrafficCore::
+checkLinePassage(std::vector<Vehicle::Detection>& detections) {
+    for (auto vehicle = detections.begin(); vehicle != detections.end(); vehicle++) {
         bool passedLine = false;
         int lineIndex = -1;
 
@@ -57,12 +58,13 @@ void TrafficCore::checkLinePassage(std::vector<Vehicle::Detection>& detections) 
         }
 
         vehicle->faixa = static_cast<int>(lineIndex);
+        vehicle->passedLine = passedLine;
 
-        if (!passedLine) {
-            vehicle = detections.erase(vehicle);
-        } else {
-            ++vehicle;
-        }
+//        if (!passedLine) {
+//            vehicle = detections.erase(vehicle);
+//        } else {
+//            ++vehicle;
+//        }
     }
 }
 
@@ -209,10 +211,55 @@ void TrafficCore::setLines(std::vector<std::pair<cv::Point, cv::Point>> lines) {
 void TrafficCore::setpermittedClasses(std::vector<std::vector<std::string>> permittedClasses){
     this->permittedClasses = std::move(permittedClasses);
 }
-
+void TrafficCore::setPolygons(std::vector<std::vector<cv::Point>> polygons) {
+    this->polygons = std::move(polygons);
+}
+void TrafficCore::setStopTime(int time) {
+    this->stopTime = time;
+}
 void TrafficCore::setIdVehicles(std::vector<Vehicle::Detection> &vehicles) {
     this->trackerDet->update(vehicles);
 }
+bool TrafficCore::isVehicleDetectionEmpty(const Vehicle::Detection &detection) {
+   return !detection.entry_time_set && !detection.exit_time_set && !detection.is_in_trigger;
+}
+
+void TrafficCore::getTriggeds(std::vector<Vehicle::Detection> &vehicles) {
+    for (auto it = this->vehiclesTrigger.begin(); it != this->vehiclesTrigger.end(); ) {
+        if (isVehicleDetectionEmpty(it->second)) {
+            it = this->vehiclesTrigger.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    for (auto &it: vehicles) {
+        if(it.passedLine && !this->vehiclesTrigger[it.id].entry_time_set){
+            this->vehiclesTrigger[it.id] = it;
+            this->vehiclesTrigger[it.id].entry_time = std::chrono::steady_clock::now();
+            this->vehiclesTrigger[it.id].entry_time_set = true;
+            this->vehiclesTrigger[it.id].is_in_trigger = true;
+        }
+
+        if(it.passedLine && this->vehiclesTrigger[it.id].is_in_trigger){
+            this->vehiclesTrigger[it.id].bbox[0] = it.bbox[0];
+            this->vehiclesTrigger[it.id].bbox[1] = it.bbox[1];
+            this->vehiclesTrigger[it.id].bbox[2] = it.bbox[2];
+            this->vehiclesTrigger[it.id].bbox[3] = it.bbox[3];
+            this->vehiclesTrigger[it.id].exit_time = std::chrono::steady_clock::now();
+        }
+
+        if(!it.passedLine && this->vehiclesTrigger[it.id].is_in_trigger){
+            this->vehiclesTrigger[it.id].bbox[0] = it.bbox[0];
+            this->vehiclesTrigger[it.id].bbox[1] = it.bbox[1];
+            this->vehiclesTrigger[it.id].bbox[2] = it.bbox[2];
+            this->vehiclesTrigger[it.id].bbox[3] = it.bbox[3];
+            this->vehiclesTrigger[it.id].exit_time_set = true;
+            this->vehiclesTrigger[it.id].is_in_trigger = false;
+        }
+    }
+}
+
 
 void TrafficCore::parseConfig() {
     std::ifstream file("config.yaml");
@@ -261,6 +308,33 @@ void TrafficCore::parseConfig() {
 
         std::cout << std::endl;
     }
+
+    std::vector<std::vector<cv::Point>> areas;
+    int tempoParada = root["tempo_parada"].as<int>();
+    YAML::Node paradas = root["paradas"];
+    for (const auto& parada : paradas) {
+        auto nome = parada["nome"].as<std::string>();
+
+        YAML::Node area = parada["area"];
+        std::vector<cv::Point> points;
+
+        for (const auto& point : area[0]) {
+            points.emplace_back(point[0].as<int>(), point[1].as<int>());
+        }
+        areas.push_back(points);
+
+        std::cout << "Area Parada: " << nome << std::endl;
+        std::cout << "Pontos: ";
+        for (size_t i = 0; i < points.size(); ++i) {
+            std::cout << "Ponto " << i + 1 << ": (" << points[i].x << ", " << points[i].y << ")";
+            if (i != points.size() - 1) {
+                std::cout << ", ";
+            }
+        }
+    }
+
+    setStopTime(tempoParada);
+    setPolygons(areas);
     setpermittedClasses(permittedclasses);
     setMargin(margem);
     setLines(lines);
@@ -287,4 +361,8 @@ void TrafficCore::getBrands(std::vector<Vehicle::Detection> &vehicles, cv::Mat &
             vehicle.brand_model = vehicle_brands[static_cast<int>(vehicle_brand[0].class_id + 1)];
         }
     }
+}
+
+void TrafficCore::checkPolyInside(std::vector<Vehicle::Detection> &detections) {
+
 }
