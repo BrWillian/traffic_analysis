@@ -26,16 +26,33 @@ public:
     TrafficCore(Detect *vehicleDet, Detect *plateDet, Detect *ocrDet, Detect *colorCls, Detect *brandCls, Tracker *trackerDet);
     ~TrafficCore();
 
+    std::map<uint16_t, Vehicle::Detection> vehiclesTrigger;
+
+    // Core
     void checkLinePassage(std::vector<Vehicle::Detection>& detections);
     void getVehicles(cv::Mat &frame, std::vector<Vehicle::Detection>& detections);
     void getColors(std::vector<Vehicle::Detection>& vehicles, cv::Mat &frame);
     void getBrands(std::vector<Vehicle::Detection>& vehicles, cv::Mat &frame);
     void getplateOcr(std::vector<Vehicle::Detection>& vehicles, cv::Mat &frame);
     void setIdVehicles(std::vector<Vehicle::Detection>& vehicles);
+
+    // Get Passage
+    void getTriggeds(std::vector<Vehicle::Detection>& vehicles);
+    bool isVehicleDetectionEmpty(const Vehicle::Detection &detection);
+
+    // Set Configuration
     void setMargin(int margin);
     void setLines(std::vector<std::pair<cv::Point, cv::Point>> Lines);
     void setpermittedClasses(std::vector<std::vector<std::string>> permittedClasses);
     void parseConfig();
+
+    // Set Configuration Check Vehicle Stop
+    void setPolygons(std::vector<std::vector<cv::Point>> polygons);
+    void setStopTime(int time);
+
+    // Check Vehicle Stopping
+    void checkPolyInside(std::vector<Vehicle::Detection>& detections);
+
 
 
 private:
@@ -49,6 +66,8 @@ private:
 
 
     int Margin;
+    std::vector<std::vector<cv::Point>> polygons;
+    int stopTime;
     std::vector<std::pair<cv::Point, cv::Point>> Lines;
     std::vector<std::vector<std::string>> permittedClasses;
     Vehicle::Detection vehicle{};
